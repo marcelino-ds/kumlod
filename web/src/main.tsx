@@ -6,11 +6,14 @@ import { createRoot } from 'react-dom/client'
 import { toast } from 'sonner'
 
 import { ApiError, setUnauthorizedHandler } from './api/client'
+import { initAppearance } from './lib/appearance'
 import { clearPersistedCache, PERSIST_MAX_AGE, persister } from './lib/persist'
 import { routeTree } from './routeTree.gen'
 
 import '@fontsource-variable/plus-jakarta-sans'
 import './index.css'
+
+initAppearance()
 
 // TanStack Query v5 assumes it starts online and only listens for changes.
 // Start from the browser's state so an app opened without signal pauses

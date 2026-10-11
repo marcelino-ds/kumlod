@@ -6,7 +6,7 @@ import {
   ChevronRightIcon,
   FolderOpenIcon,
   GraduationCapIcon,
-  HouseIcon,
+  LayoutDashboardIcon,
   ListTodoIcon,
   MenuIcon,
   PlusIcon,
@@ -16,16 +16,19 @@ import {
 import type * as React from 'react'
 
 import { dashboardQuery, meQuery } from '@/api/queries'
+import { DarkModeSwitch } from '@/components/AppearanceControl'
 import { Brand } from '@/components/common'
 import { useQuickAdd } from '@/components/QuickAddTask'
+import { SidebarScene } from '@/components/SidebarScene'
 import { Button } from '@/components/ui/button'
-import { useActiveSemester, useOnline } from '@/lib/hooks'
+import { localDate, semesterWeek, semesterWeekLabel } from '@/lib/dates'
+import { useActiveSemester, useAppSettings, useNow, useOnline } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 
 type NavItem = { to: LinkProps['to']; label: string; icon: React.ComponentType<{ className?: string }> }
 
 const mobileNav: NavItem[] = [
-  { to: '/', label: 'Hari Ini', icon: HouseIcon },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboardIcon },
   { to: '/tugas', label: 'Tugas', icon: ListTodoIcon },
   { to: '/matkul', label: 'Matkul', icon: BookOpenIcon },
   { to: '/materi', label: 'Materi', icon: FolderOpenIcon },
@@ -33,7 +36,7 @@ const mobileNav: NavItem[] = [
 ]
 
 const mainNav: NavItem[] = [
-  { to: '/', label: 'Hari Ini', icon: HouseIcon },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboardIcon },
   { to: '/tugas', label: 'Tugas', icon: ListTodoIcon },
   { to: '/matkul', label: 'Matkul', icon: BookOpenIcon },
   { to: '/materi', label: 'Materi', icon: FolderOpenIcon },
@@ -94,21 +97,21 @@ function SideLink({ item, count }: { item: NavItem; count?: { total: number; ove
 }
 
 function Sidebar() {
-  const quickAdd = useQuickAdd()
   const count = useTaskCount()
   const { active } = useActiveSemester()
   const me = useQuery(meQuery)
   const username = me.data?.user.username ?? ''
+  const { timeZone } = useAppSettings()
+  const today = localDate(useNow(), timeZone)
 
   return (
     <aside className="sticky top-3 hidden h-[calc(100dvh-1.5rem)] w-64 shrink-0 flex-col rounded-[2rem] bg-card p-4 shadow-xs ring-1 ring-black/[0.03] md:flex dark:ring-white/[0.06]">
-      <Link to="/" className="mb-6 rounded-2xl px-2 pt-1" aria-label="Kumlod, ke Hari Ini">
+      <Link to="/" className="mb-6 rounded-2xl px-2 pt-1" aria-label="Kumlod, ke Dashboard">
         <Brand />
       </Link>
-      <Button variant="brand" size="lg" className="mb-6 w-full" onClick={() => quickAdd()}>
-        <PlusIcon className="size-5" /> Tambah tugas
-      </Button>
-      <nav aria-label="Navigasi utama" className="flex flex-1 flex-col gap-6 overflow-y-auto">
+      {/* Shrinks first on short screens so the menu stays fully visible. */}
+      <SidebarScene className="relative mb-6 h-32 min-h-16 shrink-[100] overflow-hidden rounded-3xl ring-1 ring-black/5 dark:ring-white/10" />
+      <nav aria-label="Navigasi utama" className="flex min-h-0 flex-auto flex-col gap-6 overflow-y-auto">
         <div className="grid gap-1">
           <p className="px-4 pb-1 text-[0.7rem] font-bold tracking-[0.14em] text-muted-foreground/80 uppercase">Kuliah</p>
           {mainNav.map((item) => (
@@ -132,12 +135,16 @@ function Sidebar() {
           <span aria-hidden className="absolute top-6 right-10 size-6 rounded-full border-4 border-[#ff6b4a]" />
           <span className="relative block text-[0.7rem] font-bold tracking-[0.14em] uppercase opacity-70">Semester aktif</span>
           <span className="relative mt-1 block pr-12 text-base leading-tight font-bold">{active.name}</span>
+          <span className="relative mt-1 block text-xs font-semibold text-brand">
+            {semesterWeekLabel(semesterWeek(active.start_date, active.end_date, today), active.start_date)}
+          </span>
           <span className="relative mt-3 flex items-center justify-between text-xs opacity-80">
             {active.course_count} matkul · {active.total_credits} SKS
             <ChevronRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </span>
         </Link>
       )}
+      <DarkModeSwitch id="dark-mode-sidebar" className="mt-3 px-2" />
       {username && (
         <div className="mt-3 flex items-center gap-3 px-2">
           <span aria-hidden className="flex size-9 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-brand-foreground uppercase">

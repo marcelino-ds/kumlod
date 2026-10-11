@@ -4,6 +4,7 @@ import { ArrowUpRightIcon, CalendarRangeIcon, GraduationCapIcon, LogOutIcon, Set
 import type * as React from 'react'
 
 import { meQuery, useLogout } from '@/api/queries'
+import { DarkModeSwitch } from '@/components/AppearanceControl'
 import { Brand } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { useActiveSemester } from '@/lib/hooks'
@@ -89,6 +90,9 @@ function MorePage() {
           </li>
         ))}
       </ul>
+      <div className="mt-3 rounded-[1.75rem] bg-card px-4 py-1.5">
+        <DarkModeSwitch id="dark-mode-more" />
+      </div>
       <Button
         variant="outline"
         size="lg"

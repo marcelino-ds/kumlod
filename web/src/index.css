@@ -1,8 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Dark mode follows the system setting. */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/*
+ * Dark mode is a class on <html>, set by public/appearance-init.js from the
+ * choice on this device (Sistem, Terang, Gelap). "Sistem" follows the OS.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 8px);
@@ -36,6 +39,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 1rem;
   --background: oklch(0.948 0.005 95);
   --foreground: oklch(0.19 0.006 95);
@@ -61,31 +65,30 @@
   --hero-foreground: oklch(0.985 0 0);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.155 0.004 95);
-    --foreground: oklch(0.96 0.004 95);
-    --card: oklch(0.21 0.005 95);
-    --card-foreground: oklch(0.96 0.004 95);
-    --popover: oklch(0.23 0.005 95);
-    --popover-foreground: oklch(0.96 0.004 95);
-    --primary: oklch(0.925 0.185 120);
-    --primary-foreground: oklch(0.19 0.006 95);
-    --secondary: oklch(0.27 0.006 95);
-    --secondary-foreground: oklch(0.96 0.004 95);
-    --muted: oklch(0.26 0.005 95);
-    --muted-foreground: oklch(0.72 0.01 95);
-    --accent: oklch(0.28 0.006 95);
-    --accent-foreground: oklch(0.96 0.004 95);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 16%);
-    --ring: oklch(0.925 0.185 120);
-    --brand: oklch(0.89 0.18 120);
-    --brand-foreground: oklch(0.19 0.006 95);
-    --hero: oklch(0.255 0.006 95);
-    --hero-foreground: oklch(0.985 0 0);
-  }
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.155 0.004 95);
+  --foreground: oklch(0.96 0.004 95);
+  --card: oklch(0.21 0.005 95);
+  --card-foreground: oklch(0.96 0.004 95);
+  --popover: oklch(0.23 0.005 95);
+  --popover-foreground: oklch(0.96 0.004 95);
+  --primary: oklch(0.925 0.185 120);
+  --primary-foreground: oklch(0.19 0.006 95);
+  --secondary: oklch(0.27 0.006 95);
+  --secondary-foreground: oklch(0.96 0.004 95);
+  --muted: oklch(0.26 0.005 95);
+  --muted-foreground: oklch(0.72 0.01 95);
+  --accent: oklch(0.28 0.006 95);
+  --accent-foreground: oklch(0.96 0.004 95);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.925 0.185 120);
+  --brand: oklch(0.89 0.18 120);
+  --brand-foreground: oklch(0.19 0.006 95);
+  --hero: oklch(0.255 0.006 95);
+  --hero-foreground: oklch(0.985 0 0);
 }
 
 @layer base {
@@ -173,6 +176,161 @@ body [data-sonner-toaster] {
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/*
+ * Sidebar live scene (components/SidebarScene.tsx). Transforms are in SVG
+ * user units; each element sets --d (duration) and --delay as needed.
+ */
+.scene * {
+  transform-box: fill-box;
+}
+.scene-drift {
+  animation: scene-drift var(--d, 80s) linear var(--delay, 0s) infinite;
+}
+.scene-petal {
+  transform-origin: center;
+  animation: scene-fall var(--d, 10s) linear var(--delay, 0s) infinite;
+}
+.scene-fly {
+  animation: scene-fly 22s linear var(--delay, 0s) infinite;
+}
+.scene-flap {
+  transform-origin: center;
+  animation: scene-flap 0.55s ease-in-out infinite alternate;
+}
+.scene-twinkle {
+  animation: scene-twinkle 3.2s ease-in-out var(--delay, 0s) infinite;
+}
+.scene-shoot {
+  opacity: 0;
+  animation: scene-shoot 9s ease-out 2s infinite;
+}
+.scene-tail {
+  transform-origin: 0% 100%;
+  animation: scene-tail 2.8s ease-in-out infinite;
+}
+.scene-flicker {
+  animation: scene-flicker 6s steps(1) var(--delay, 0s) infinite;
+}
+.scene-glow {
+  transform-origin: center;
+  animation: scene-glow 6s ease-in-out infinite;
+}
+@keyframes scene-drift {
+  from {
+    transform: translateX(60px);
+  }
+  to {
+    transform: translateX(-290px);
+  }
+}
+@keyframes scene-fall {
+  0% {
+    transform: translate(0, -12px) rotate(0deg);
+    opacity: 0;
+  }
+  8%,
+  90% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-16px, 64px) rotate(200deg);
+  }
+  100% {
+    transform: translate(-34px, 140px) rotate(400deg);
+    opacity: 0;
+  }
+}
+@keyframes scene-fly {
+  from {
+    transform: translate(-30px, 0);
+  }
+  to {
+    transform: translate(260px, -18px);
+  }
+}
+@keyframes scene-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0.35);
+  }
+}
+@keyframes scene-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes scene-shoot {
+  0%,
+  70% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  72% {
+    opacity: 1;
+  }
+  82%,
+  100% {
+    transform: translate(80px, 34px);
+    opacity: 0;
+  }
+}
+@keyframes scene-tail {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+@keyframes scene-flicker {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  37% {
+    opacity: 0.45;
+  }
+  39% {
+    opacity: 0.95;
+  }
+}
+@keyframes scene-glow {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene * {
+    animation: none !important;
+  }
+  .scene-petal,
+  .scene-fly,
+  .scene-shoot {
+    display: none;
+  }
+}
+
+/* Set for a moment while switching light/dark so all colors change at once. */
+.appearance-switching,
+.appearance-switching *,
+.appearance-switching ::before,
+.appearance-switching ::after {
+  transition: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

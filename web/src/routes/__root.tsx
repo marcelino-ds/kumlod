@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 
 import { PwaUpdater } from '@/components/PwaUpdater'
 import { Button } from '@/components/ui/button'
+import { useResolvedAppearance } from '@/lib/appearance'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Root,
@@ -11,10 +12,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 })
 
 function Root() {
+  const appearance = useResolvedAppearance()
   return (
     <>
       <Outlet />
-      <Toaster position="top-center" richColors closeButton toastOptions={{ duration: 4000 }} />
+      <Toaster position="top-center" theme={appearance} richColors closeButton toastOptions={{ duration: 4000 }} />
       <PwaUpdater />
     </>
   )
@@ -29,7 +31,7 @@ function NotFound() {
       <h1 className="text-2xl font-extrabold tracking-tight">Halaman tidak ditemukan</h1>
       <p className="text-sm text-muted-foreground">Link ini mungkin salah atau datanya sudah dihapus.</p>
       <Button asChild size="lg">
-        <Link to="/">Kembali ke Hari Ini</Link>
+        <Link to="/">Kembali ke Dashboard</Link>
       </Button>
     </div>
   )

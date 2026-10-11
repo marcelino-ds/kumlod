@@ -49,7 +49,7 @@ function SemesterPage() {
     <>
       <PageHeader
         title="Semester"
-        description="Satu semester aktif dipakai di Hari Ini, Tugas, Matkul, dan Materi. Semester lain tetap dihitung ke IPK."
+        description="Satu semester aktif dipakai di Dashboard, Tugas, Matkul, dan Materi. Semester lain tetap dihitung ke IPK."
         actions={
           <Button onClick={() => setEditing({ mode: 'create' })}>
             <PlusIcon /> Semester baru

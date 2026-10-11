@@ -16,6 +16,7 @@
 
 # Local data and secrets
 /data/
+/data-demo/
 *.db
 *.db-shm
 *.db-wal

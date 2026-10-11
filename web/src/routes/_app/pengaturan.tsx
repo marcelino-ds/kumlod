@@ -14,6 +14,7 @@ import {
   PlusIcon,
   SendIcon,
   SmartphoneIcon,
+  SunMoonIcon,
   Trash2Icon,
   UserCheckIcon,
   type LucideIcon,
@@ -32,6 +33,7 @@ import {
   useUnsubscribePush,
   useUpdateSettings,
 } from '@/api/queries'
+import { AppearancePicker } from '@/components/AppearanceControl'
 import { ErrorState, Field, FormError, invalidProps, LoadingList, PageHeader } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,6 +57,7 @@ function SettingsPage() {
       <PageHeader title="Pengaturan" description="Atur notifikasi, aturan absen, skala nilai, dan akun kamu." />
       <div className="grid gap-5">
         <PushCard />
+        <AppearanceCard />
         {settings.data === undefined ? (
           settings.isError ? <ErrorState error={settings.error} onRetry={() => void settings.refetch()} /> : <LoadingList rows={4} />
         ) : (
@@ -478,6 +481,24 @@ function IconTitle({ icon: Icon, tone, children }: { icon: LucideIcon; tone: str
       </span>
       {children}
     </CardTitle>
+  )
+}
+
+// ---------------- Appearance on this device ----------------
+
+function AppearanceCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <IconTitle icon={SunMoonIcon} tone="bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+          Tampilan
+        </IconTitle>
+        <CardDescription>Mode terang, gelap, atau ikuti pengaturan sistem. Berlaku di perangkat ini.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <AppearancePicker />
+      </CardContent>
+    </Card>
   )
 }
 

@@ -1,9 +1,10 @@
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
-import { BellRingIcon, CheckIcon, MousePointer2Icon, WifiOffIcon } from 'lucide-react'
+import { LockIcon, UserIcon, WifiOffIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { qk, useLogin } from '@/api/queries'
-import { Brand, Field, FormError } from '@/components/common'
+import { Brand, FormError } from '@/components/common'
+import { LoginIllustration } from '@/components/LoginIllustration'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useOnline } from '@/lib/hooks'
@@ -24,7 +25,9 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
-const features = ['Absen 1 tap', 'Reminder deadline', 'Target nilai', 'Bisa offline']
+/** Filled input with a leading icon, as in the login design. */
+const inputClass = 'h-12 border-transparent bg-muted pl-11 shadow-none focus-visible:bg-card'
+const iconClass = 'pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground'
 
 function LoginPage() {
   const { redirect: target } = Route.useSearch()
@@ -43,92 +46,67 @@ function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center p-3 md:p-6">
-      <div className="grid w-full max-w-5xl gap-3 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:gap-5">
-        <section className="relative overflow-hidden rounded-[2.25rem] bg-brand p-6 text-brand-foreground md:min-h-[36rem] md:p-10">
-          <div aria-hidden className="dot-grid absolute inset-0 text-black/[0.07]" />
-          <div aria-hidden className="absolute -right-24 -bottom-28 hidden size-80 rounded-full bg-hero md:block" />
-          <div aria-hidden className="absolute top-10 right-10 hidden size-14 rounded-full border-[10px] border-[#ff6b4a] md:block" />
-
-          <div className="relative">
-            <Brand />
-            <h1 className="mt-10 text-[2.6rem] leading-[0.95] font-extrabold tracking-tighter md:mt-16 md:text-6xl">
-              Kuliah beres,
-              <br />
-              nilai{' '}
-              <span className="inline-block -rotate-2 rounded-full bg-hero px-4 pb-1 text-brand">aman.</span>
-            </h1>
-            <p className="mt-5 max-w-sm text-base font-medium opacity-80">
-              Jadwal, absen, tugas, materi, dan IPK dalam satu asisten kuliah pribadi.
-            </p>
-            <ul className="mt-6 flex max-w-md flex-wrap gap-2">
-              {features.map((f) => (
-                <li key={f} className="rounded-full bg-white/55 px-3.5 py-1.5 text-sm font-semibold dark:bg-black/15">
-                  {f}
-                </li>
-              ))}
-            </ul>
+    <main className="flex min-h-dvh items-center justify-center p-3 md:p-8">
+      <div className="grid w-full max-w-4xl rounded-[2rem] bg-card p-2 shadow-xl shadow-black/[0.04] ring-1 ring-black/[0.04] md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] dark:bg-[oklch(0.22_0.005_95)] dark:shadow-black/40 dark:ring-white/10">
+        <div className="hidden min-h-[34rem] flex-col rounded-[1.6rem] bg-muted p-6 md:flex dark:bg-[oklch(0.27_0.006_95)]">
+          <img src="/logo.svg" alt="" className="size-9 rounded-[0.7rem]" />
+          <div className="flex flex-1 items-center justify-center px-2 pb-6">
+            <LoginIllustration className="max-w-[19rem]" />
           </div>
+        </div>
 
-          {/* Playful floating "cursors", echoing what the app does for you. */}
-          <div aria-hidden className="pointer-events-none absolute right-6 bottom-8 hidden flex-col items-end gap-4 md:flex">
-            <span className="flex items-center gap-1">
-              <MousePointer2Icon className="size-6 -scale-x-100 fill-[#ff6b4a] text-[#ff6b4a]" />
-              <span className="flex items-center gap-1.5 rounded-full bg-[#ff6b4a] px-4 py-2 text-sm font-bold text-white shadow-lg">
-                <CheckIcon className="size-4" strokeWidth={3} /> Hadir
-              </span>
-            </span>
-            <span className="mr-14 flex items-center gap-1">
-              <MousePointer2Icon className="size-6 -scale-x-100 fill-sky-400 text-sky-400" />
-              <span className="flex items-center gap-1.5 rounded-full bg-sky-400 px-4 py-2 text-sm font-bold text-sky-950 shadow-lg">
-                <BellRingIcon className="size-4" /> Deadline H-1
-              </span>
-            </span>
-            <span className="flex items-center gap-1">
-              <MousePointer2Icon className="size-6 -scale-x-100 fill-white text-hero" />
-              <span className="rounded-full bg-white px-4 py-2 text-sm font-bold text-neutral-900 shadow-lg">IPK naik!</span>
-            </span>
+        <div className="flex flex-col justify-center px-5 py-10 md:px-12">
+          <div className="mx-auto w-full max-w-xs">
+            <Brand className="mb-10 md:hidden" />
+            <h1 className="text-4xl font-extrabold tracking-tight">Masuk</h1>
+
+            <form onSubmit={submit} className="mt-8 grid gap-3">
+              {!online && (
+                <p role="status" className="flex items-center gap-2 rounded-2xl bg-amber-100 px-4 py-3 text-sm font-medium text-amber-950 dark:bg-amber-950 dark:text-amber-200">
+                  <WifiOffIcon className="size-4 shrink-0" aria-hidden /> Kamu sedang offline.
+                </p>
+              )}
+              <div className="relative">
+                <label htmlFor="username" className="sr-only">
+                  Username
+                </label>
+                <UserIcon className={iconClass} aria-hidden />
+                <Input
+                  id="username"
+                  placeholder="Username"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  required
+                  className={inputClass}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              <div className="relative">
+                <label htmlFor="password" className="sr-only">
+                  Password
+                </label>
+                <LockIcon className={iconClass} aria-hidden />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  required
+                  className={inputClass}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <FormError error={login.error} />
+              <Button type="submit" size="lg" className="mt-2 h-12 w-full text-base" disabled={login.isPending || !username.trim() || !password}>
+                {login.isPending ? 'Memeriksa...' : 'Masuk'}
+              </Button>
+            </form>
           </div>
-        </section>
-
-        <section className="flex flex-col justify-center rounded-[2.25rem] bg-card p-6 shadow-xs ring-1 ring-black/[0.03] md:p-10 dark:ring-white/[0.06]">
-          <h2 className="text-3xl font-extrabold tracking-tight">Masuk</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">Selamat datang lagi. Lanjutkan dari terakhir kali kamu buka.</p>
-          <form onSubmit={submit} className="mt-8 grid gap-4">
-            {!online && (
-              <p role="status" className="flex items-center gap-2 rounded-2xl bg-amber-100 px-4 py-3 text-sm font-medium text-amber-950 dark:bg-amber-950 dark:text-amber-200">
-                <WifiOffIcon className="size-4 shrink-0" aria-hidden /> Kamu sedang offline. Login butuh koneksi.
-              </p>
-            )}
-            <Field id="username" label="Username">
-              <Input
-                id="username"
-                autoComplete="username"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </Field>
-            <Field id="password" label="Password">
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </Field>
-            <FormError error={login.error} />
-            <Button type="submit" size="lg" className="mt-2 h-14 text-base" disabled={login.isPending || !username.trim() || !password}>
-              {login.isPending ? 'Memeriksa...' : 'Masuk'}
-            </Button>
-          </form>
-          <p className="mt-8 text-center text-xs text-muted-foreground">Aplikasi pribadi. Tidak ada pendaftaran publik.</p>
-        </section>
+        </div>
       </div>
     </main>
   )

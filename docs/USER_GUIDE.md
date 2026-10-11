@@ -22,6 +22,10 @@ Yang dikirim (semua bisa dimatikan di Pengaturan, bagian Reminder):
 - Pengingat absen: 15 menit setelah kuliah mulai kalau absennya belum dicatat. Tap notifikasinya untuk langsung absen.
 - Ringkasan harian: jam 06:00 (bisa diubah), kalau hari itu ada kuliah atau deadline dalam 48 jam.
 
+## Mode gelap
+
+Nyalakan switch Mode gelap di bawah sidebar (laptop) atau di halaman Lainnya (HP). Di Pengaturan, bagian Tampilan, pilih Sistem untuk kembali mengikuti pengaturan perangkat. Pilihan disimpan per perangkat.
+
 ## Awal semester
 
 1. Semester: buat semester baru dengan tanggal mulai dan selesai. Semester pertama otomatis aktif.
@@ -32,8 +36,8 @@ Yang dikirim (semua bisa dimatikan di Pengaturan, bagian Reminder):
 
 ## Sehari-hari
 
-- Hari Ini menampilkan kuliah hari ini. Tap Hadir, Izin, Sakit, atau Alpa; tap tombol yang sama lagi untuk menghapus catatan.
-- Bagian Perlu perhatian menampilkan matkul yang jatah bolosnya menipis (Waspada, Kritis, Lewat batas) atau punya pertemuan lewat yang belum dicatat.
+- Dashboard menampilkan kuliah hari ini. Tap Hadir, Izin, Sakit, atau Alpa; tap tombol yang sama lagi untuk menghapus catatan. Kuliah yang sedang berlangsung atau berikutnya ditonjolkan.
+- Kolom Agenda berisi tugas terlambat, matkul yang jatah bolosnya menipis (Waspada, Kritis, Lewat batas) atau punya pertemuan lewat yang belum dicatat, dan deadline 7 hari ke depan.
 - Tugas baru: tombol + (HP) atau Tambah tugas (laptop). Isi judul, pilih matkul, deadline default hari ini 23:59, simpan. Kalau matkulnya punya satu komponen bersumber tugas, tugas otomatis terhubung ke komponen itu.
 - Centang tugas untuk menandai sudah dikumpulkan. Reminder berikutnya otomatis berhenti.
 

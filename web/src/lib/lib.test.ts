@@ -10,6 +10,8 @@ import {
   localDate,
   localTime,
   relativeDay,
+  semesterWeek,
+  semesterWeekLabel,
   timeLeft,
   zonedToDate,
 } from './dates'
@@ -55,6 +57,27 @@ describe('dates', () => {
     expect(timeLeft('2026-10-12T04:00:00Z', now)).toBe('3 jam lagi')
     expect(timeLeft('2026-10-15T01:00:00Z', now)).toBe('3 hari lagi')
     expect(timeLeft('2026-10-12T00:30:00Z', now)).toBe('lewat 30 menit')
+  })
+
+  it('counts semester weeks from the Monday of the start week', () => {
+    // Semester 3 in the demo: Monday 31 Aug 2026 to Monday 11 Jan 2027.
+    const cases: [string, string, string, ReturnType<typeof semesterWeek>][] = [
+      ['2026-08-31', '2027-01-11', '2026-08-30', { week: 0, total: 20, phase: 'before' }],
+      ['2026-08-31', '2027-01-11', '2026-08-31', { week: 1, total: 20, phase: 'during' }],
+      ['2026-08-31', '2027-01-11', '2026-09-06', { week: 1, total: 20, phase: 'during' }],
+      ['2026-08-31', '2027-01-11', '2026-09-07', { week: 2, total: 20, phase: 'during' }],
+      ['2026-08-31', '2027-01-11', '2026-10-11', { week: 6, total: 20, phase: 'during' }],
+      ['2026-08-31', '2027-01-11', '2027-01-11', { week: 20, total: 20, phase: 'during' }],
+      ['2026-08-31', '2027-01-11', '2027-01-12', { week: 20, total: 20, phase: 'after' }],
+      // A Thursday start still makes that whole week the first one.
+      ['2026-09-03', '2026-09-30', '2026-09-07', { week: 2, total: 5, phase: 'during' }],
+      ['2026-09-03', '2026-09-30', '2026-09-03', { week: 1, total: 5, phase: 'during' }],
+    ]
+    for (const [start, end, today, want] of cases) expect(semesterWeek(start, end, today), `${start} ${today}`).toEqual(want)
+
+    expect(semesterWeekLabel({ week: 6, total: 20, phase: 'during' }, '2026-08-31')).toBe('Minggu ke-6 dari 20')
+    expect(semesterWeekLabel({ week: 0, total: 20, phase: 'before' }, '2026-08-31')).toBe('Mulai Sen, 31 Agt')
+    expect(semesterWeekLabel({ week: 20, total: 20, phase: 'after' }, '2026-08-31')).toBe('Semester selesai')
   })
 })
 

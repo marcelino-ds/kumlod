@@ -70,6 +70,40 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000)
 }
 
+/** Monday on or before a YYYY-MM-DD date. */
+function mondayOf(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay() // 0 = Sunday
+  return addDays(date, -((weekday + 6) % 7))
+}
+
+export type SemesterWeek = {
+  /** 1-based week of the semester; 0 before it starts, total after it ends. */
+  week: number
+  /** Number of weeks from the start week through the end week. */
+  total: number
+  phase: 'before' | 'during' | 'after'
+}
+
+/**
+ * Week of the semester as campuses count it: week 1 is the Monday-Sunday
+ * week that contains the start date, and weeks roll over every Monday.
+ */
+export function semesterWeek(start: string, end: string, today: string): SemesterWeek {
+  const base = mondayOf(start)
+  const total = Math.floor(daysBetween(base, end) / 7) + 1
+  if (today < start) return { week: 0, total, phase: 'before' }
+  if (today > end) return { week: total, total, phase: 'after' }
+  return { week: Math.floor(daysBetween(base, today) / 7) + 1, total, phase: 'during' }
+}
+
+/** "Minggu ke-6 dari 20", "Mulai Sen, 31 Agt", or "Semester selesai". */
+export function semesterWeekLabel(w: SemesterWeek, start: string): string {
+  if (w.phase === 'before') return `Mulai ${formatShortDate(start)}`
+  if (w.phase === 'after') return 'Semester selesai'
+  return `Minggu ke-${w.week} dari ${w.total}`
+}
+
 /** "Senin, 12 Oktober 2026" */
 export function formatLongDate(date: string): string {
   return format(parseLocalDate(date), 'EEEE, d MMMM yyyy', { locale: id })
