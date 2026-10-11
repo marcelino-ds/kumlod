@@ -1,0 +1,24 @@
+#!/bin/sh
+# kumlodctl: run the kumlod CLI as the kumlod user with the production environment.
+# Examples:
+#   kumlodctl user create gua
+#   kumlodctl user passwd gua
+#   kumlodctl version
+set -eu
+
+if [ "$(id -u)" -ne 0 ]; then
+  exec sudo "$0" "$@"
+fi
+
+# Interactive prompts need a pseudo terminal; piped input (--password-stdin) needs a pipe.
+if [ -t 0 ]; then
+  MODE=--pty
+else
+  MODE=--pipe
+fi
+
+exec systemd-run --quiet --wait --collect "$MODE" \
+  --uid=kumlod --gid=kumlod \
+  --working-directory=/var/lib/kumlod \
+  --property=EnvironmentFile=/etc/kumlod/kumlod.env \
+  /opt/kumlod/kumlod "$@"

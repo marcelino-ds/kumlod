@@ -1,0 +1,19 @@
+[Unit]
+Description=Backup file materi Kumlod ke object storage
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=kumlod
+Group=kumlod
+EnvironmentFile=/etc/kumlod/storage.env
+Environment=RCLONE_CACHE_DIR=/var/cache/kumlod-backup
+CacheDirectory=kumlod-backup
+ExecStart=/opt/kumlod/backup-files.sh
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true

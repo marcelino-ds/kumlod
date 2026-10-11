@@ -1,0 +1,20 @@
+# Template: setup-vps.sh replaces __DOMAIN__ and __EMAIL__ and writes /etc/caddy/Caddyfile.
+{
+	email __EMAIL__
+}
+
+__DOMAIN__ {
+	encode zstd gzip
+
+	# Keep this above KUMLOD_MAX_UPLOAD_MB (default 50).
+	request_body {
+		max_size 60MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:8080
+}

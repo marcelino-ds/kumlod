@@ -1,0 +1,7 @@
+# Generator config for the Go side of the API contract.
+# Run from the repo root: go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
+package: api
+output: internal/api/api.gen.go
+generate:
+  models: true
+  std-http-server: true

@@ -1,0 +1,34 @@
+# Build output
+/dist/
+/bin/
+*.exe
+
+# Frontend build embedded into the Go binary (keep the placeholder)
+/internal/webui/dist/*
+!/internal/webui/dist/.gitkeep
+
+# Frontend
+/web/node_modules/
+/web/dist/
+/web/dev-dist/
+/web/coverage/
+/web/*.tsbuildinfo
+
+# Local data and secrets
+/data/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Design reference shots (third-party work, local only)
+/.design_ideas/

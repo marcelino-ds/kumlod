@@ -1,0 +1,2021 @@
+openapi: 3.0.3
+info:
+  title: Kumlod API
+  version: 0.1.0
+  description: |
+    Kontrak API Kumlod Fase 1. File ini sumber kebenaran untuk backend Go (oapi-codegen)
+    dan frontend React (openapi-typescript).
+
+    Konvensi:
+    - Semua path di bawah `/api`, field JSON memakai snake_case.
+    - Semua endpoint butuh cookie sesi `kumlod_session`, kecuali `getHealth` dan `login`.
+    - Request POST, PUT, dan DELETE wajib membawa header `X-Requested-With: kumlod`.
+    - ID berupa string UUID. Endpoint create menerima `id` opsional (UUIDv7 dari klien).
+    - `LocalDate` = `YYYY-MM-DD` dan `LocalTime` = `HH:MM` dalam zona waktu aplikasi.
+      Timestamp memakai RFC 3339.
+    - Update memakai PUT dengan objek lengkap. Field nullable dikirim `null` untuk mengosongkan.
+servers:
+  - url: /
+security:
+  - cookieAuth: []
+tags:
+  - name: system
+  - name: auth
+  - name: settings
+  - name: dashboard
+  - name: semesters
+  - name: courses
+  - name: meetings
+  - name: grades
+  - name: tasks
+  - name: materials
+  - name: push
+
+paths:
+  /api/health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Status server
+      security: []
+      responses:
+        '200':
+          description: Server sehat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Login dan buat sesi
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login berhasil, cookie `kumlod_session` diset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Hapus sesi saat ini
+      responses:
+        '204':
+          description: Logout berhasil
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Pengguna yang sedang login
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/auth/password:
+    put:
+      tags: [auth]
+      operationId: changePassword
+      summary: Ganti password dan cabut sesi lain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password diganti
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/settings:
+    get:
+      tags: [settings]
+      operationId: getSettings
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [settings]
+      operationId: updateSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsUpdate'
+      responses:
+        '200':
+          description: Pengaturan tersimpan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/dashboard:
+    get:
+      tags: [dashboard]
+      operationId: getDashboard
+      summary: Ringkasan hari ini untuk semester aktif
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/semesters:
+    get:
+      tags: [semesters]
+      operationId: listSemesters
+      responses:
+        '200':
+          description: Semua semester, urut tanggal mulai menurun
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SemesterList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [semesters]
+      operationId: createSemester
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SemesterCreate'
+      responses:
+        '201':
+          description: Semester dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/semesters/{semesterId}:
+    parameters:
+      - $ref: '#/components/parameters/SemesterId'
+    get:
+      tags: [semesters]
+      operationId: getSemester
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [semesters]
+      operationId: updateSemester
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SemesterUpdate'
+      responses:
+        '200':
+          description: Semester diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [semesters]
+      operationId: deleteSemester
+      summary: Hapus semester beserta seluruh isinya
+      responses:
+        '204':
+          description: Terhapus
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/semesters/{semesterId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/SemesterId'
+    post:
+      tags: [semesters]
+      operationId: activateSemester
+      responses:
+        '200':
+          description: Semester jadi aktif, semester lain nonaktif
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/semesters/{semesterId}/courses:
+    parameters:
+      - $ref: '#/components/parameters/SemesterId'
+    get:
+      tags: [courses]
+      operationId: listCourses
+      responses:
+        '200':
+          description: Matkul di semester ini, urut nama
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [courses]
+      operationId: createCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseCreate'
+      responses:
+        '201':
+          description: Matkul dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/courses/{courseId}:
+    parameters:
+      - $ref: '#/components/parameters/CourseId'
+    get:
+      tags: [courses]
+      operationId: getCourse
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [courses]
+      operationId: updateCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseUpdate'
+      responses:
+        '200':
+          description: Matkul diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [courses]
+      operationId: deleteCourse
+      responses:
+        '204':
+          description: Terhapus
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/courses/{courseId}/meetings:
+    parameters:
+      - $ref: '#/components/parameters/CourseId'
+    get:
+      tags: [meetings]
+      operationId: listMeetings
+      responses:
+        '200':
+          description: Pertemuan urut tanggal lalu jam mulai
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [meetings]
+      operationId: createMeeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingCreate'
+      responses:
+        '201':
+          description: Pertemuan ditambahkan dengan nomor berikutnya
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/courses/{courseId}/meetings/generate:
+    parameters:
+      - $ref: '#/components/parameters/CourseId'
+    post:
+      tags: [meetings]
+      operationId: generateMeetings
+      summary: Buat pertemuan dari jadwal. 409 kalau matkul sudah punya pertemuan.
+      responses:
+        '201':
+          description: Pertemuan dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingList'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/meetings/{meetingId}:
+    parameters:
+      - $ref: '#/components/parameters/MeetingId'
+    put:
+      tags: [meetings]
+      operationId: updateMeeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingUpdate'
+      responses:
+        '200':
+          description: Pertemuan diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [meetings]
+      operationId: deleteMeeting
+      responses:
+        '204':
+          description: Terhapus
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/meetings/{meetingId}/attendance:
+    parameters:
+      - $ref: '#/components/parameters/MeetingId'
+    put:
+      tags: [meetings]
+      operationId: setAttendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceUpdate'
+      responses:
+        '200':
+          description: Absen tersimpan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/courses/{courseId}/grades:
+    parameters:
+      - $ref: '#/components/parameters/CourseId'
+    get:
+      tags: [grades]
+      operationId: getCourseGrades
+      responses:
+        '200':
+          description: Ringkasan nilai matkul
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GradeSummary'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/courses/{courseId}/grades/components:
+    parameters:
+      - $ref: '#/components/parameters/CourseId'
+    put:
+      tags: [grades]
+      operationId: replaceGradeComponents
+      summary: Ganti seluruh komponen nilai. Komponen dengan `id` lama dipertahankan supaya tautan tugas tidak putus.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeComponentsUpdate'
+      responses:
+        '200':
+          description: Komponen tersimpan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GradeSummary'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/gpa:
+    get:
+      tags: [grades]
+      operationId: getGpa
+      parameters:
+        - name: target_ipk
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            maximum: 4
+      responses:
+        '200':
+          description: IPS per semester, IPK, dan simulasi kalau `target_ipk` diisi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GpaSummary'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/tasks:
+    get:
+      tags: [tasks]
+      operationId: listTasks
+      parameters:
+        - name: semester_id
+          in: query
+          required: false
+          description: Default semester aktif. Isi `all` untuk semua semester.
+          schema:
+            type: string
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskStatus'
+        - name: due_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: due_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Tugas urut deadline menaik
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [tasks]
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Tugas dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [tasks]
+      operationId: getTask
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [tasks]
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Tugas diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [tasks]
+      operationId: deleteTask
+      responses:
+        '204':
+          description: Terhapus
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/tasks/{taskId}/status:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    put:
+      tags: [tasks]
+      operationId: setTaskStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskStatusUpdate'
+      responses:
+        '200':
+          description: Status diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/materials:
+    get:
+      tags: [materials]
+      operationId: listMaterials
+      parameters:
+        - name: semester_id
+          in: query
+          required: false
+          description: Default semester aktif. Isi `all` untuk semua semester.
+          schema:
+            type: string
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: meeting_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          description: Pencarian teks penuh (pencocokan awalan kata). Hasil diurutkan menurut relevansi.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Materi, urut terbaru kalau tanpa `q`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialList'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [materials]
+      operationId: createMaterial
+      summary: Tambah materi berupa link atau catatan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCreate'
+      responses:
+        '201':
+          description: Materi dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/materials/upload:
+    post:
+      tags: [materials]
+      operationId: uploadMaterial
+      summary: Upload file sebagai materi
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, course_id]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                course_id:
+                  type: string
+                meeting_id:
+                  type: string
+                title:
+                  type: string
+                  description: Default nama file tanpa ekstensi
+                description:
+                  type: string
+                id:
+                  type: string
+      responses:
+        '201':
+          description: File tersimpan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/materials/{materialId}:
+    parameters:
+      - $ref: '#/components/parameters/MaterialId'
+    get:
+      tags: [materials]
+      operationId: getMaterial
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [materials]
+      operationId: updateMaterial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialUpdate'
+      responses:
+        '200':
+          description: Materi diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [materials]
+      operationId: deleteMaterial
+      responses:
+        '204':
+          description: Terhapus, file fisik ikut dihapus
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/files/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    get:
+      tags: [materials]
+      operationId: downloadFile
+      parameters:
+        - name: download
+          in: query
+          required: false
+          description: 'Paksa header Content-Disposition attachment'
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Isi file. Mendukung header Range.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/push/public-key:
+    get:
+      tags: [push]
+      operationId: getPushPublicKey
+      responses:
+        '200':
+          description: VAPID public key (base64url)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushPublicKey'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/push/subscriptions:
+    post:
+      tags: [push]
+      operationId: subscribePush
+      summary: Simpan subscription perangkat. Endpoint yang sama diperbarui.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscriptionInput'
+      responses:
+        '204':
+          description: Tersimpan
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/push/unsubscribe:
+    post:
+      tags: [push]
+      operationId: unsubscribePush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushUnsubscribeInput'
+      responses:
+        '204':
+          description: Subscription dihapus (tetap 204 kalau tidak ditemukan)
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/push/test:
+    post:
+      tags: [push]
+      operationId: sendTestPush
+      responses:
+        '200':
+          description: Hasil pengiriman ke semua perangkat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushTestResult'
+        default:
+          $ref: '#/components/responses/Error'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: kumlod_session
+
+  parameters:
+    SemesterId:
+      name: semesterId
+      in: path
+      required: true
+      schema:
+        type: string
+    CourseId:
+      name: courseId
+      in: path
+      required: true
+      schema:
+        type: string
+    MeetingId:
+      name: meetingId
+      in: path
+      required: true
+      schema:
+        type: string
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+    MaterialId:
+      name: materialId
+      in: path
+      required: true
+      schema:
+        type: string
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    LocalDate:
+      type: string
+      pattern: '^\d{4}-\d{2}-\d{2}$'
+      example: '2026-09-01'
+    LocalTime:
+      type: string
+      pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+      example: '08:00'
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, unauthenticated, csrf_failed, not_found, conflict, file_too_large, rate_limited, internal]
+            message:
+              type: string
+            fields:
+              type: object
+              additionalProperties:
+                type: string
+
+    Health:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 8
+          maxLength: 256
+
+    User:
+      type: object
+      required: [id, username]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+
+    Me:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+
+    GradeScaleEntry:
+      type: object
+      required: [letter, min_score, points]
+      properties:
+        letter:
+          type: string
+          minLength: 1
+          maxLength: 3
+        min_score:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        points:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 4
+
+    ReminderSettings:
+      type: object
+      required: [task_enabled, attendance_enabled, digest_enabled, digest_time]
+      properties:
+        task_enabled:
+          type: boolean
+        attendance_enabled:
+          type: boolean
+        digest_enabled:
+          type: boolean
+        digest_time:
+          $ref: '#/components/schemas/LocalTime'
+
+    Baseline:
+      type: object
+      required: [gpa, credits]
+      properties:
+        gpa:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 4
+          description: IPK sebelum memakai Kumlod
+        credits:
+          type: integer
+          minimum: 0
+          maximum: 300
+          description: Total SKS lulus sebelum memakai Kumlod
+
+    SettingsUpdate:
+      type: object
+      required: [timezone, grade_scale, count_excused_as_absent, default_min_attendance_pct, default_total_meetings, reminders, baseline]
+      properties:
+        timezone:
+          type: string
+          example: Asia/Jakarta
+        grade_scale:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: Diurutkan server berdasarkan `min_score` menurun
+          items:
+            $ref: '#/components/schemas/GradeScaleEntry'
+        count_excused_as_absent:
+          type: boolean
+        default_min_attendance_pct:
+          type: integer
+          minimum: 0
+          maximum: 100
+        default_total_meetings:
+          type: integer
+          minimum: 1
+          maximum: 40
+        reminders:
+          $ref: '#/components/schemas/ReminderSettings'
+        baseline:
+          $ref: '#/components/schemas/Baseline'
+
+    Settings:
+      allOf:
+        - $ref: '#/components/schemas/SettingsUpdate'
+        - type: object
+          required: [grade_scale_confirmed]
+          properties:
+            grade_scale_confirmed:
+              type: boolean
+              description: true setelah pengaturan pernah disimpan
+
+    SemesterTerm:
+      type: string
+      enum: [odd, even, short]
+      description: odd = ganjil, even = genap, short = pendek
+
+    Semester:
+      type: object
+      required: [id, name, academic_year, term, start_date, end_date, is_active, course_count, total_credits, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        academic_year:
+          type: string
+          example: 2026/2027
+        term:
+          $ref: '#/components/schemas/SemesterTerm'
+        start_date:
+          $ref: '#/components/schemas/LocalDate'
+        end_date:
+          $ref: '#/components/schemas/LocalDate'
+        is_active:
+          type: boolean
+        course_count:
+          type: integer
+        total_credits:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SemesterUpdate:
+      type: object
+      required: [name, academic_year, term, start_date, end_date]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        academic_year:
+          type: string
+          maxLength: 20
+        term:
+          $ref: '#/components/schemas/SemesterTerm'
+        start_date:
+          $ref: '#/components/schemas/LocalDate'
+        end_date:
+          $ref: '#/components/schemas/LocalDate'
+
+    SemesterCreate:
+      allOf:
+        - $ref: '#/components/schemas/SemesterUpdate'
+        - type: object
+          properties:
+            id:
+              type: string
+            activate:
+              type: boolean
+              description: Jadikan aktif. Semester pertama selalu aktif.
+
+    SemesterList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Semester'
+
+    ScheduleInput:
+      type: object
+      required: [day_of_week, start_time, end_time, room]
+      properties:
+        day_of_week:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: ISO, 1 = Senin, 7 = Minggu
+        start_time:
+          $ref: '#/components/schemas/LocalTime'
+        end_time:
+          $ref: '#/components/schemas/LocalTime'
+        room:
+          type: string
+          maxLength: 100
+
+    Schedule:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleInput'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+
+    AttendanceLevel:
+      type: string
+      enum: [safe, warning, critical, exceeded]
+
+    AttendanceSummary:
+      type: object
+      required: [total, held, recorded, present, absences, unrecorded, required_present, max_absences, remaining_absences, percentage, level]
+      properties:
+        total:
+          type: integer
+          description: Pertemuan kuliah yang tidak dibatalkan
+        held:
+          type: integer
+          description: Yang tanggalnya sudah lewat atau hari ini
+        recorded:
+          type: integer
+        present:
+          type: integer
+        absences:
+          type: integer
+        unrecorded:
+          type: integer
+          description: Sudah lewat (sebelum hari ini) tapi belum dicatat
+        required_present:
+          type: integer
+        max_absences:
+          type: integer
+        remaining_absences:
+          type: integer
+          description: Bisa negatif kalau sudah lewat batas
+        percentage:
+          type: number
+          format: double
+          nullable: true
+        level:
+          $ref: '#/components/schemas/AttendanceLevel'
+
+    CourseBrief:
+      type: object
+      required: [id, name, code, color]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        color:
+          type: string
+
+    CourseGradeBrief:
+      type: object
+      required: [current_score, letter, is_final, official_letter]
+      properties:
+        current_score:
+          type: number
+          format: double
+          nullable: true
+        letter:
+          type: string
+          nullable: true
+          description: Huruf hasil hitung (sementara atau akhir)
+        is_final:
+          type: boolean
+        official_letter:
+          type: string
+          nullable: true
+
+    Course:
+      type: object
+      required: [id, semester_id, code, name, credits, lecturer, color, total_meetings, min_attendance_pct, final_grade_letter, notes, schedules, attendance, grade, open_task_count, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        semester_id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        credits:
+          type: integer
+        lecturer:
+          type: string
+        color:
+          type: string
+        total_meetings:
+          type: integer
+        min_attendance_pct:
+          type: integer
+        final_grade_letter:
+          type: string
+          nullable: true
+        notes:
+          type: string
+        schedules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+        attendance:
+          $ref: '#/components/schemas/AttendanceSummary'
+        grade:
+          $ref: '#/components/schemas/CourseGradeBrief'
+        open_task_count:
+          type: integer
+          description: Tugas berstatus todo atau in_progress
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CourseUpdate:
+      type: object
+      required: [code, name, credits, lecturer, color, total_meetings, min_attendance_pct, final_grade_letter, notes, schedules]
+      properties:
+        code:
+          type: string
+          maxLength: 30
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        credits:
+          type: integer
+          minimum: 0
+          maximum: 24
+        lecturer:
+          type: string
+          maxLength: 150
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+        total_meetings:
+          type: integer
+          minimum: 1
+          maximum: 40
+        min_attendance_pct:
+          type: integer
+          minimum: 0
+          maximum: 100
+        final_grade_letter:
+          type: string
+          nullable: true
+          description: Huruf resmi KHS, harus ada di skala nilai
+        notes:
+          type: string
+          maxLength: 5000
+        schedules:
+          type: array
+          maxItems: 14
+          items:
+            $ref: '#/components/schemas/ScheduleInput'
+
+    CourseCreate:
+      type: object
+      required: [name, credits, schedules]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          maxLength: 30
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        credits:
+          type: integer
+          minimum: 0
+          maximum: 24
+        lecturer:
+          type: string
+          maxLength: 150
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+        total_meetings:
+          type: integer
+          minimum: 1
+          maximum: 40
+          description: Default dari pengaturan
+        min_attendance_pct:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Default dari pengaturan
+        notes:
+          type: string
+          maxLength: 5000
+        schedules:
+          type: array
+          maxItems: 14
+          items:
+            $ref: '#/components/schemas/ScheduleInput'
+        generate_meetings:
+          type: boolean
+          description: Default true. Butuh minimal satu slot jadwal.
+        grade_components:
+          type: array
+          maxItems: 20
+          description: Default Tugas 30 (sumber tugas), UTS 30, UAS 40
+          items:
+            $ref: '#/components/schemas/GradeComponentInput'
+
+    CourseList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Course'
+
+    MeetingKind:
+      type: string
+      enum: [lecture, midterm, final]
+      description: lecture = kuliah, midterm = UTS, final = UAS
+
+    MeetingStatus:
+      type: string
+      enum: [scheduled, cancelled]
+
+    Meeting:
+      type: object
+      required: [id, course_id, number, date, start_time, end_time, room, kind, status, attendance, attendance_at, topic, notes, material_count, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        course_id:
+          type: string
+        number:
+          type: integer
+        date:
+          $ref: '#/components/schemas/LocalDate'
+        start_time:
+          type: string
+          description: HH:MM atau string kosong
+        end_time:
+          type: string
+          description: HH:MM atau string kosong
+        room:
+          type: string
+        kind:
+          $ref: '#/components/schemas/MeetingKind'
+        status:
+          $ref: '#/components/schemas/MeetingStatus'
+        attendance:
+          type: string
+          nullable: true
+          enum: [present, excused, sick, absent]
+          description: present = hadir, excused = izin, sick = sakit, absent = alpa
+        attendance_at:
+          type: string
+          format: date-time
+          nullable: true
+        topic:
+          type: string
+        notes:
+          type: string
+        material_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    MeetingUpdate:
+      type: object
+      required: [date, start_time, end_time, room, kind, status, topic, notes]
+      properties:
+        date:
+          $ref: '#/components/schemas/LocalDate'
+        start_time:
+          type: string
+          description: HH:MM atau string kosong
+        end_time:
+          type: string
+          description: HH:MM atau string kosong
+        room:
+          type: string
+          maxLength: 100
+        kind:
+          $ref: '#/components/schemas/MeetingKind'
+        status:
+          $ref: '#/components/schemas/MeetingStatus'
+        topic:
+          type: string
+          maxLength: 300
+        notes:
+          type: string
+          maxLength: 10000
+
+    MeetingCreate:
+      type: object
+      required: [date]
+      properties:
+        id:
+          type: string
+        date:
+          $ref: '#/components/schemas/LocalDate'
+        start_time:
+          type: string
+        end_time:
+          type: string
+        room:
+          type: string
+          maxLength: 100
+        kind:
+          $ref: '#/components/schemas/MeetingKind'
+        topic:
+          type: string
+          maxLength: 300
+        notes:
+          type: string
+          maxLength: 10000
+
+    MeetingList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Meeting'
+
+    AttendanceUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          nullable: true
+          enum: [present, excused, sick, absent]
+          description: null menghapus catatan absen
+
+    GradeSource:
+      type: string
+      enum: [manual, tasks]
+
+    GradeComponentInput:
+      type: object
+      required: [name, weight, score, source]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        weight:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 100
+        score:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: Diabaikan kalau source = tasks
+        source:
+          $ref: '#/components/schemas/GradeSource'
+
+    GradeComponent:
+      type: object
+      required: [id, name, weight, score, source, effective_score, graded_task_count, position]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        weight:
+          type: number
+          format: double
+        score:
+          type: number
+          format: double
+          nullable: true
+        source:
+          $ref: '#/components/schemas/GradeSource'
+        effective_score:
+          type: number
+          format: double
+          nullable: true
+        graded_task_count:
+          type: integer
+        position:
+          type: integer
+
+    GradeComponentsUpdate:
+      type: object
+      required: [components]
+      properties:
+        components:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/GradeComponentInput'
+
+    TargetStatus:
+      type: string
+      enum: [secured, possible, impossible]
+
+    GradeTarget:
+      type: object
+      required: [letter, min_score, required_average, status]
+      properties:
+        letter:
+          type: string
+        min_score:
+          type: number
+          format: double
+        required_average:
+          type: number
+          format: double
+          nullable: true
+          description: Rata-rata minimal di komponen yang belum ada nilainya. null kalau semua sudah ada nilainya.
+        status:
+          $ref: '#/components/schemas/TargetStatus'
+
+    GradeSummary:
+      type: object
+      required: [course_id, components, total_weight, known_weight, current_score, final_score, letter, is_final, official_letter, targets]
+      properties:
+        course_id:
+          type: string
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/GradeComponent'
+        total_weight:
+          type: number
+          format: double
+        known_weight:
+          type: number
+          format: double
+        current_score:
+          type: number
+          format: double
+          nullable: true
+        final_score:
+          type: number
+          format: double
+          nullable: true
+        letter:
+          type: string
+          nullable: true
+        is_final:
+          type: boolean
+        official_letter:
+          type: string
+          nullable: true
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/GradeTarget'
+
+    GpaSemester:
+      type: object
+      required: [semester_id, name, is_active, credits, graded_credits, ips, is_projected]
+      properties:
+        semester_id:
+          type: string
+        name:
+          type: string
+        is_active:
+          type: boolean
+        credits:
+          type: integer
+        graded_credits:
+          type: integer
+        ips:
+          type: number
+          format: double
+          nullable: true
+        is_projected:
+          type: boolean
+
+    GpaSimulation:
+      type: object
+      required: [target_ipk, required_ips, status]
+      properties:
+        target_ipk:
+          type: number
+          format: double
+        required_ips:
+          type: number
+          format: double
+          nullable: true
+        status:
+          type: string
+          enum: [secured, possible, impossible, no_credits]
+
+    GpaSummary:
+      type: object
+      required: [semesters, ipk, total_graded_credits, is_projected, baseline]
+      properties:
+        semesters:
+          type: array
+          items:
+            $ref: '#/components/schemas/GpaSemester'
+        ipk:
+          type: number
+          format: double
+          nullable: true
+        total_graded_credits:
+          type: integer
+          description: Termasuk SKS baseline
+        is_projected:
+          type: boolean
+        baseline:
+          $ref: '#/components/schemas/Baseline'
+        simulation:
+          $ref: '#/components/schemas/GpaSimulation'
+
+    TaskStatus:
+      type: string
+      enum: [todo, in_progress, submitted, graded]
+      description: todo = belum, in_progress = dikerjakan, submitted = dikumpulkan, graded = dinilai
+
+    TaskPriority:
+      type: string
+      enum: [low, normal, high]
+
+    Task:
+      type: object
+      required: [id, semester_id, course_id, course, meeting_id, grade_component_id, title, description, deadline, status, priority, submission_url, score, completed_at, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        semester_id:
+          type: string
+        course_id:
+          type: string
+          nullable: true
+        course:
+          allOf:
+            - $ref: '#/components/schemas/CourseBrief'
+          nullable: true
+        meeting_id:
+          type: string
+          nullable: true
+        grade_component_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+        deadline:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        submission_url:
+          type: string
+        score:
+          type: number
+          format: double
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskUpdate:
+      type: object
+      required: [course_id, meeting_id, grade_component_id, title, description, deadline, status, priority, submission_url, score]
+      properties:
+        course_id:
+          type: string
+          nullable: true
+          description: Harus matkul di semester yang sama dengan tugas
+        meeting_id:
+          type: string
+          nullable: true
+          description: Harus pertemuan milik course_id
+        grade_component_id:
+          type: string
+          nullable: true
+          description: Harus komponen milik course_id
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 10000
+        deadline:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        submission_url:
+          type: string
+          maxLength: 2000
+        score:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 100
+
+    TaskCreate:
+      type: object
+      required: [title, deadline]
+      properties:
+        id:
+          type: string
+        semester_id:
+          type: string
+          description: Default semester dari course_id, atau semester aktif
+        course_id:
+          type: string
+        meeting_id:
+          type: string
+        grade_component_id:
+          type: string
+          description: Default komponen bersumber tugas di matkul itu, kalau matkul punya tepat satu
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 10000
+        deadline:
+          type: string
+          format: date-time
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        submission_url:
+          type: string
+          maxLength: 2000
+
+    TaskStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+
+    TaskList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+
+    MaterialKind:
+      type: string
+      enum: [link, note, file]
+
+    FileInfo:
+      type: object
+      required: [id, original_name, mime_type, size_bytes]
+      properties:
+        id:
+          type: string
+        original_name:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+
+    Material:
+      type: object
+      required: [id, course_id, course, meeting_id, meeting_number, kind, title, description, url, file, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        course_id:
+          type: string
+        course:
+          $ref: '#/components/schemas/CourseBrief'
+        meeting_id:
+          type: string
+          nullable: true
+        meeting_number:
+          type: integer
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/MaterialKind'
+        title:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        file:
+          allOf:
+            - $ref: '#/components/schemas/FileInfo'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    MaterialCreate:
+      type: object
+      required: [course_id, kind, title]
+      properties:
+        id:
+          type: string
+        course_id:
+          type: string
+        meeting_id:
+          type: string
+        kind:
+          type: string
+          enum: [link, note]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 20000
+        url:
+          type: string
+          maxLength: 2000
+          description: Wajib http(s) untuk kind = link
+
+    MaterialUpdate:
+      type: object
+      required: [meeting_id, title, description, url]
+      properties:
+        meeting_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 20000
+        url:
+          type: string
+          maxLength: 2000
+          description: Diabaikan kecuali kind = link
+
+    MaterialList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
+
+    TodayMeeting:
+      type: object
+      required: [meeting, course]
+      properties:
+        meeting:
+          $ref: '#/components/schemas/Meeting'
+        course:
+          $ref: '#/components/schemas/CourseBrief'
+
+    AttendanceAlert:
+      type: object
+      required: [course, attendance]
+      properties:
+        course:
+          $ref: '#/components/schemas/CourseBrief'
+        attendance:
+          $ref: '#/components/schemas/AttendanceSummary'
+
+    Dashboard:
+      type: object
+      required: [date, now, timezone, today_meetings, overdue_tasks, upcoming_tasks, attendance_alerts]
+      properties:
+        date:
+          $ref: '#/components/schemas/LocalDate'
+        now:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        semester:
+          $ref: '#/components/schemas/Semester'
+        today_meetings:
+          type: array
+          description: Pertemuan hari ini (termasuk yang batal), urut jam mulai
+          items:
+            $ref: '#/components/schemas/TodayMeeting'
+        overdue_tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        upcoming_tasks:
+          type: array
+          description: Deadline dalam 7 hari ke depan, status todo atau in_progress
+          items:
+            $ref: '#/components/schemas/Task'
+        attendance_alerts:
+          type: array
+          description: Matkul dengan level warning, critical, exceeded, atau unrecorded > 0
+          items:
+            $ref: '#/components/schemas/AttendanceAlert'
+
+    PushPublicKey:
+      type: object
+      required: [public_key]
+      properties:
+        public_key:
+          type: string
+
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint:
+          type: string
+          maxLength: 2000
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh:
+              type: string
+            auth:
+              type: string
+
+    PushUnsubscribeInput:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint:
+          type: string
+
+    PushTestResult:
+      type: object
+      required: [sent, failed]
+      properties:
+        sent:
+          type: integer
+        failed:
+          type: integer

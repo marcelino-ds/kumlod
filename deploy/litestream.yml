@@ -1,0 +1,16 @@
+# Litestream 0.5 configuration for Kumlod (/etc/litestream.yml).
+# ${...} values come from /etc/kumlod/storage.env (loaded by the systemd override).
+dbs:
+  - path: /var/lib/kumlod/data/kumlod.db
+    replica:
+      type: s3
+      bucket: ${KUMLOD_S3_BUCKET}
+      path: kumlod/db
+      endpoint: ${KUMLOD_S3_ENDPOINT}
+      region: ${KUMLOD_S3_REGION}
+      access-key-id: ${KUMLOD_S3_ACCESS_KEY_ID}
+      secret-access-key: ${KUMLOD_S3_SECRET_ACCESS_KEY}
+
+logging:
+  level: info
+  type: text

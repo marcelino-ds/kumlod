@@ -1,0 +1,49 @@
+[Unit]
+Description=Kumlod (asisten kuliah pribadi)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kumlod
+Group=kumlod
+WorkingDirectory=/var/lib/kumlod
+EnvironmentFile=/etc/kumlod/kumlod.env
+ExecStart=/opt/kumlod/kumlod serve
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+# Resource guard (Kumlod normally stays well under 100 MB).
+MemoryHigh=200M
+MemoryMax=400M
+LimitNOFILE=4096
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kumlod
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
