@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, type LinkProps } from '@tanstack/react-router'
+import { Link, type LinkProps, useLocation } from '@tanstack/react-router'
 import {
   BookOpenIcon,
   CalendarRangeIcon,
@@ -159,6 +159,9 @@ function Sidebar() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const quickAdd = useQuickAdd()
+  // The dashboard, task list, and course list use the full width on large
+  // screens; other pages keep the narrower reading width.
+  const wide = useLocation({ select: (l) => ['/', '/tugas', '/matkul'].includes(l.pathname) })
   return (
     <div className="min-h-dvh md:flex md:gap-3 md:p-3">
       <a
@@ -174,7 +177,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="pt-safe sticky top-0 z-30">
           <OfflineBanner />
         </div>
-        <main id="konten" className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-36 md:px-6 md:pt-6 md:pb-10 lg:px-8">
+        <main id="konten" className={cn('mx-auto w-full flex-1', wide ? 'max-w-[110rem]' : 'max-w-6xl', 'px-4 pt-6 pb-36 md:px-6 md:pt-6 md:pb-10 lg:px-8')}>
           {children}
         </main>
       </div>

@@ -25,8 +25,8 @@ function TaskPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link to="/tugas" className={backLinkClass}>
-        <ArrowLeftIcon /> Tugas
+      <Link to="/tugas" search={{ task: taskId }} className={backLinkClass}>
+        <ArrowLeftIcon /> Detail tugas
       </Link>
       {task.data === undefined ? (
         task.isError ? <ErrorState error={task.error} onRetry={() => void task.refetch()} /> : <LoadingList rows={5} />

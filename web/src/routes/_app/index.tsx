@@ -171,19 +171,39 @@ function currentMeeting(meetings: Schemas['TodayMeeting'][], hm: string) {
   return { item: tm, now: (tm.meeting.start_time || '00:00') <= hm }
 }
 
-const chipClass =
-  'inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-white/40 focus-visible:outline-none [&>svg]:size-4 [&>svg]:shrink-0'
+const toMinutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5))
+
+/** "25 menit", "1 jam", "1 jam 20 menit" */
+function formatDuration(min: number): string {
+  if (min < 60) return `${min} menit`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m ? `${h} jam ${m} menit` : `${h} jam`
+}
+
+/** Fixed pastel tones for the hero tiles. The hero is dark in both themes, so these stay put. */
+const tileTone = {
+  sky: 'bg-[#cfe2ff] text-[#0f2547]',
+  sun: 'bg-[#ffe27a] text-[#3a2c00]',
+  coral: 'bg-[#ff8f73] text-[#3d0f02]',
+  lilac: 'bg-[#dcd4ff] text-[#24194d]',
+} as const
+
+const tileClass =
+  'group relative flex h-full min-h-[7.5rem] flex-col rounded-[1.5rem] p-4 transition-transform sm:min-h-[9rem] hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-hero focus-visible:outline-none'
 
 /**
- * Dashboard hero: greeting with the name highlighted, today's status as
- * chips that jump to the details, the class happening now or next, and a
- * ring for how many tasks are done.
+ * Dashboard hero, ordered by importance: the class happening now (lime, the
+ * loudest), then pastel tiles for today's numbers, then the semester week as
+ * a quiet timeline next to the greeting.
  */
 function DashboardHeader({ d, name, now, timeZone, tasks }: { d: Dashboard; name: string; now: Date; timeZone: string; tasks?: Task[] }) {
   const hm = localTime(now, timeZone)
   const key = greetingKey(hm)
   const GreetingIcon = greetingIcon[key]
-  const lectures = d.today_meetings.filter((m) => m.meeting.status !== 'cancelled').length
+  const active = d.today_meetings.filter((m) => m.meeting.status !== 'cancelled')
+  const lectures = active.length
+  const remaining = active.filter((m) => (m.meeting.end_time || '23:59') > hm).length
   const upcoming = d.upcoming_tasks.length
   const overdue = d.overdue_tasks.length
   const current = currentMeeting(d.today_meetings, hm)
@@ -191,27 +211,26 @@ function DashboardHeader({ d, name, now, timeZone, tasks }: { d: Dashboard; name
   const done = tasks?.filter((t) => !isOpen(t.status)).length
 
   return (
-    <header className="relative overflow-hidden rounded-[2rem] bg-hero p-5 text-hero-foreground md:p-7">
+    <header className="relative overflow-hidden rounded-[2rem] bg-hero p-4 text-hero-foreground sm:p-5 md:p-6">
       <div aria-hidden className="dot-grid absolute inset-0 text-white/[0.05]" />
-      <span aria-hidden className="absolute -top-14 -right-14 hidden size-40 rounded-full bg-brand/90 lg:block" />
-      <span aria-hidden className="absolute top-7 right-28 hidden size-7 rounded-full border-[5px] border-[#ff6b4a] lg:block" />
-      <span aria-hidden className="absolute -bottom-28 -left-20 size-64 rounded-full bg-white/[0.04]" />
+      <span aria-hidden className="absolute -top-28 -right-28 size-72 rounded-full bg-brand/10 blur-3xl" />
 
-      <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-10">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/10 px-3">
-              <CalendarDaysIcon className="size-3.5" aria-hidden />
-              {formatLongDate(d.date)}
-            </span>
-            <Link to="/semester" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/10 px-3 transition-colors hover:bg-white/15">
-              <span aria-hidden className="size-2 rounded-full bg-brand" />
-              {d.semester?.name}
-            </Link>
-            {d.semester && <WeekChip start={d.semester.start_date} end={d.semester.end_date} today={d.date} />}
-          </div>
+      <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-end lg:gap-8 2xl:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
+        <div className="min-w-0 px-1 pt-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-hero-foreground/65">
+            <CalendarDaysIcon className="size-4 shrink-0" aria-hidden />
+            <span>{formatLongDate(d.date)}</span>
+            {d.semester && (
+              <>
+                <span aria-hidden>·</span>
+                <Link to="/semester" className="font-semibold text-hero-foreground underline-offset-4 hover:underline">
+                  {d.semester.name}
+                </Link>
+              </>
+            )}
+          </p>
 
-          <h1 className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[2rem] leading-tight font-extrabold tracking-tight md:text-[2.75rem]">
+          <h1 className="mt-3 flex items-center gap-3 text-[1.875rem] leading-tight font-extrabold tracking-tight md:text-[2.5rem]">
             <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 md:size-12">
               <GreetingIcon className="size-6 text-brand" />
             </span>
@@ -225,150 +244,203 @@ function DashboardHeader({ d, name, now, timeZone, tasks }: { d: Dashboard; name
               )}
             </span>
           </h1>
-
-          <ul aria-label="Ringkasan hari ini" className="mt-5 flex flex-wrap gap-2">
-            <li>
-              <a href="#schedule-title" className={cn(chipClass, 'bg-white/10 hover:bg-white/15')}>
-                <BookOpenIcon aria-hidden />
-                {lectures > 0 ? `${lectures} kuliah hari ini` : 'Tidak ada kuliah hari ini'}
-              </a>
-            </li>
-            {upcoming > 0 && (
-              <li>
-                <Link to="/tugas" className={cn(chipClass, 'bg-white/10 hover:bg-white/15')}>
-                  <CalendarClockIcon aria-hidden />
-                  {upcoming} deadline minggu ini
-                </Link>
-              </li>
-            )}
-            {overdue > 0 && (
-              <li>
-                <Link to="/tugas" className={cn(chipClass, 'bg-[#ff6b4a] text-[#1c1c1a] hover:brightness-95')}>
-                  <TriangleAlertIcon aria-hidden />
-                  {overdue} tugas terlambat
-                </Link>
-              </li>
-            )}
-            {upcoming === 0 && overdue === 0 && (
-              <li>
-                <span className={cn(chipClass, 'bg-brand text-brand-foreground')}>
-                  <CircleCheckIcon aria-hidden />
-                  Tidak ada deadline dekat
-                </span>
-              </li>
-            )}
-          </ul>
-
-          {lectures > 0 && <NowNext current={current} />}
         </div>
 
-        <TaskRing done={done} total={total} upcoming={upcoming} />
+        {d.semester && <WeekTimeline start={d.semester.start_date} end={d.semester.end_date} today={d.date} />}
       </div>
+
+      <ul
+        aria-label="Ringkasan hari ini"
+        className="relative mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:gap-3 lg:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,1fr))]"
+      >
+        <li className="col-span-2 sm:col-span-3 lg:col-span-1">
+          <NowNext current={current} lectures={lectures} hm={hm} />
+        </li>
+        <li>
+          <a href="#schedule-title" className={cn(tileClass, tileTone.sky)}>
+            <TileBody
+              icon={BookOpenIcon}
+              label="Kuliah hari ini"
+              value={lectures}
+              note={lectures === 0 ? 'Libur kuliah' : remaining === 0 ? 'Semua sudah selesai' : `Sisa ${remaining} kuliah`}
+            />
+          </a>
+        </li>
+        <li>
+          {overdue > 0 ? (
+            <Link to="/tugas" className={cn(tileClass, tileTone.coral)}>
+              <TileBody
+                icon={TriangleAlertIcon}
+                label="Tugas terlambat"
+                value={overdue}
+                note={upcoming > 0 ? `+${upcoming} deadline 7 hari ke depan` : 'Segera kumpulkan'}
+              />
+            </Link>
+          ) : (
+            <Link to="/tugas" className={cn(tileClass, tileTone.sun)}>
+              <TileBody
+                icon={CalendarClockIcon}
+                label="Deadline dekat"
+                value={upcoming}
+                note={upcoming === 0 ? 'Tidak ada deadline dekat' : 'Dalam 7 hari ke depan'}
+              />
+            </Link>
+          )}
+        </li>
+        <li className="col-span-2 sm:col-span-1">
+          <Link to="/tugas" className={cn(tileClass, tileTone.lilac)}>
+            <TileBody
+              icon={CircleCheckIcon}
+              label="Tugas selesai"
+              value={done ?? '-'}
+              of={total}
+              progress={done !== undefined && total ? done / total : undefined}
+              note={total === undefined ? 'Memuat tugas' : total === 0 ? 'Belum ada tugas' : `${Math.round(((done ?? 0) / total) * 100)}% dari semua tugas`}
+            />
+          </Link>
+        </li>
+      </ul>
     </header>
   )
 }
 
-/** Week of the semester, e.g. "Minggu ke-6 / 20". */
-function WeekChip({ start, end, today }: { start: string; end: string; today: string }) {
-  const w = semesterWeek(start, end, today)
-  if (w.phase !== 'during') {
-    return <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/10 px-3">{semesterWeekLabel(w, start)}</span>
-  }
+/** Content of a pastel hero tile: icon, label, a big number (optionally "of" a total), an optional bar, and a note. */
+function TileBody({
+  icon: Icon,
+  label,
+  value,
+  of,
+  note,
+  progress,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  value: React.ReactNode
+  of?: number
+  note: string
+  progress?: number
+}) {
   return (
-    <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-brand px-3 text-brand-foreground">
-      <CalendarRangeIcon className="size-3.5" aria-hidden />
-      <span>
-        Minggu ke-<span className="text-sm font-extrabold tabular-nums">{w.week}</span>
-        <span className="opacity-60"> dari {w.total}</span>
+    <>
+      <span className="flex items-center justify-between gap-2">
+        <span aria-hidden className="flex size-9 items-center justify-center rounded-full bg-white/60">
+          <Icon className="size-[1.05rem]" />
+        </span>
+        <ArrowUpRightIcon aria-hidden className="size-4 opacity-40 transition-opacity group-hover:opacity-90" />
       </span>
-    </span>
+      <span className="mt-3 text-[0.8rem] leading-tight font-bold opacity-75">{label}</span>
+      <span className="mt-1 flex items-baseline gap-1 tabular-nums">
+        <span className="text-[2.25rem] leading-none font-extrabold tracking-tight">{value}</span>
+        {of !== undefined && <span className="text-base font-bold opacity-50">/ {of}</span>}
+      </span>
+      {progress !== undefined && (
+        <span aria-hidden className="mt-2.5 block h-1.5 overflow-hidden rounded-full bg-black/10">
+          <span className="block h-full rounded-full bg-current transition-[width] duration-700" style={{ width: `${Math.round(progress * 100)}%` }} />
+        </span>
+      )}
+      <span className="mt-auto pt-2 text-xs leading-snug font-semibold opacity-75">{note}</span>
+    </>
   )
 }
 
-/** Which class is running now or comes next; or that today's classes are over. */
-function NowNext({ current }: { current?: { item: Schemas['TodayMeeting']; now: boolean } }) {
-  if (!current) {
-    return (
-      <p className="mt-4 flex items-center gap-2 text-sm text-hero-foreground/70">
-        <CircleCheckIcon className="size-4 text-brand" aria-hidden />
-        Kuliah hari ini sudah selesai semua.
-      </p>
-    )
-  }
-  const { meeting: m, course } = current.item
+/** "Minggu ke-6 dari 20" with one segment per semester week; the current week is lit. */
+function WeekTimeline({ start, end, today }: { start: string; end: string; today: string }) {
+  const w = semesterWeek(start, end, today)
+  const during = w.phase === 'during'
+  const left = w.total - w.week
   return (
     <Link
-      to="/"
-      search={{ meeting: m.id }}
-      style={courseStyle(course.color)}
-      className="group mt-4 flex max-w-xl items-center gap-3 rounded-2xl bg-white/[0.07] p-3 pr-4 transition-colors hover:bg-white/[0.11]"
+      to="/semester"
+      className="block rounded-[1.5rem] bg-white/[0.06] p-4 ring-1 ring-white/10 transition-colors hover:bg-white/[0.09] focus-visible:ring-[3px] focus-visible:ring-white/50 focus-visible:outline-none"
     >
-      <span className="tint-solid flex size-11 shrink-0 items-center justify-center rounded-xl text-white">
-        {current.now ? <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-white" /> : <ClockIcon className="size-5" aria-hidden />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs font-semibold text-hero-foreground/60">
-          {current.now ? `Sedang berlangsung sampai ${m.end_time}` : `Berikutnya, mulai ${m.start_time}`}
+      <span className="flex items-center justify-between gap-3 text-xs font-semibold text-hero-foreground/60">
+        <span className="inline-flex items-center gap-1.5">
+          <CalendarRangeIcon className="size-3.5" aria-hidden />
+          Minggu kuliah
         </span>
-        <span className="block truncate font-bold">{course.name}</span>
+        {during && <span>{left > 0 ? `${left} minggu lagi` : 'Minggu terakhir'}</span>}
       </span>
-      {m.room && (
-        <span className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-hero-foreground/70 sm:inline-flex">
-          <MapPinIcon className="size-3.5" aria-hidden />
-          {m.room}
-        </span>
-      )}
-      <ArrowRightIcon className="size-4 shrink-0 text-hero-foreground/60 transition-transform group-hover:translate-x-0.5" aria-hidden />
+      <span className="mt-1.5 block text-2xl leading-tight font-extrabold tracking-tight">
+        {during ? (
+          <>
+            Minggu ke-<span className="text-brand tabular-nums">{w.week}</span>{' '}
+            <span className="text-base font-bold text-hero-foreground/45">dari {w.total}</span>
+          </>
+        ) : (
+          semesterWeekLabel(w, start)
+        )}
+      </span>
+      <span aria-hidden className="mt-3 flex h-3 items-center gap-[3px]">
+        {Array.from({ length: w.total }, (_, i) => {
+          const n = i + 1
+          const isCurrent = during && n === w.week
+          return (
+            <span
+              key={n}
+              className={cn('flex-1 rounded-full', isCurrent ? 'h-3 bg-brand' : n <= w.week ? 'h-2 bg-white/40' : 'h-2 bg-white/10')}
+            />
+          )
+        })}
+      </span>
     </Link>
   )
 }
 
-/** Ring showing finished tasks out of all tasks, with the totals beside it. */
-function TaskRing({ done, total, upcoming }: { done?: number; total?: number; upcoming: number }) {
-  const pct = done !== undefined && total ? done / total : 0
-  const r = 52
-  const c = 2 * Math.PI * r
-  return (
-    <div className="flex items-center gap-5 lg:flex-col lg:items-center lg:gap-3">
-      <div
-        role="img"
-        aria-label={total === undefined ? 'Memuat tugas' : `${done} dari ${total} tugas selesai`}
-        className="relative size-32 shrink-0 lg:size-36"
-      >
-        <svg viewBox="0 0 120 120" className="size-full -rotate-90">
-          <circle cx="60" cy="60" r={r} fill="none" strokeWidth="12" className="stroke-white/10" />
-          <circle
-            cx="60"
-            cy="60"
-            r={r}
-            fill="none"
-            strokeWidth="12"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - pct)}
-            className="stroke-brand transition-[stroke-dashoffset] duration-700"
-          />
-        </svg>
-        <span aria-hidden className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl leading-none font-extrabold tracking-tight tabular-nums">{total ? `${Math.round(pct * 100)}%` : '-'}</span>
-          <span className="mt-1 text-[0.7rem] font-semibold text-hero-foreground/60">selesai</span>
-        </span>
+/** The class running now or coming next (the loudest card), or that today's classes are over. */
+function NowNext({ current, lectures, hm }: { current?: { item: Schemas['TodayMeeting']; now: boolean }; lectures: number; hm: string }) {
+  if (!current) {
+    return (
+      <div className="flex h-full min-h-[9rem] flex-col justify-center rounded-[1.5rem] bg-white/[0.06] p-5 ring-1 ring-white/10">
+        <CircleCheckIcon className="size-6 text-brand" aria-hidden />
+        <p className="mt-2 text-lg font-extrabold tracking-tight">{lectures > 0 ? 'Kuliah hari ini beres' : 'Tidak ada kuliah hari ini'}</p>
+        <p className="mt-0.5 text-sm text-hero-foreground/65">{lectures > 0 ? 'Semua kuliah hari ini sudah selesai.' : 'Waktu yang pas buat nyicil tugas.'}</p>
       </div>
-      <dl className="grid grid-cols-1 gap-1.5 text-sm lg:grid-cols-3 lg:gap-4 lg:text-center">
-        <div className="flex items-baseline gap-2 lg:flex-col-reverse lg:items-center lg:gap-0.5">
-          <dt className="text-xs text-hero-foreground/60">Selesai</dt>
-          <dd className="font-extrabold tabular-nums">{done ?? '-'}</dd>
-        </div>
-        <div className="flex items-baseline gap-2 lg:flex-col-reverse lg:items-center lg:gap-0.5">
-          <dt className="text-xs text-hero-foreground/60">Total</dt>
-          <dd className="font-extrabold tabular-nums">{total ?? '-'}</dd>
-        </div>
-        <div className="flex items-baseline gap-2 lg:flex-col-reverse lg:items-center lg:gap-0.5">
-          <dt className="text-xs text-hero-foreground/60">Minggu ini</dt>
-          <dd className="font-extrabold tabular-nums">{upcoming}</dd>
-        </div>
-      </dl>
-    </div>
+    )
+  }
+  const { meeting: m, course } = current.item
+  const start = toMinutes(m.start_time || '00:00')
+  const end = toMinutes(m.end_time || '23:59')
+  const nowMin = toMinutes(hm)
+  const left = current.now ? end - nowMin : start - nowMin
+  const elapsed = current.now && end > start ? Math.min(1, Math.max(0, (nowMin - start) / (end - start))) : 0
+
+  return (
+    <Link to="/" search={{ meeting: m.id }} style={courseStyle(course.color)} className={cn(tileClass, 'bg-brand p-5 text-brand-foreground')}>
+      <span className="flex flex-wrap items-center justify-between gap-2">
+        <span className="inline-flex h-8 items-center gap-2 rounded-full bg-brand-foreground px-3 text-xs font-bold text-brand">
+          <span aria-hidden className={cn('size-2 rounded-full bg-brand', current.now && 'animate-pulse')} />
+          {current.now ? 'Sedang berlangsung' : 'Berikutnya'}
+        </span>
+        <span className="text-sm font-extrabold tabular-nums">
+          {current.now ? `Sisa ${formatDuration(left)}` : `Mulai dalam ${formatDuration(left)}`}
+        </span>
+      </span>
+      <span className="mt-3 flex items-center gap-2.5">
+        <span aria-hidden className="tint-solid size-3 shrink-0 rounded-full ring-2 ring-brand-foreground/25" />
+        <span className="min-w-0 flex-1 truncate text-2xl leading-tight font-extrabold tracking-tight">{course.name}</span>
+        <ArrowUpRightIcon className="size-5 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" aria-hidden />
+      </span>
+      <span className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold opacity-75">
+        <span className="inline-flex items-center gap-1.5 tabular-nums">
+          <ClockIcon className="size-3.5 shrink-0" aria-hidden />
+          {m.start_time || '--:--'}
+          {m.end_time && `-${m.end_time}`}
+        </span>
+        {m.room && (
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <MapPinIcon className="size-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{m.room}</span>
+          </span>
+        )}
+      </span>
+      {current.now && (
+        <span aria-hidden className="mt-auto block pt-4">
+          <span className="block h-2 overflow-hidden rounded-full bg-brand-foreground/15">
+            <span className="block h-full rounded-full bg-brand-foreground" style={{ width: `${Math.round(elapsed * 100)}%` }} />
+          </span>
+        </span>
+      )}
+    </Link>
   )
 }
 
