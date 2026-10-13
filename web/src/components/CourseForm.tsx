@@ -7,13 +7,17 @@ import type { Course, Schemas } from '@/api/client'
 import { useCreateCourse, useUpdateCourse } from '@/api/queries'
 import { Field, FormError, invalidProps } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { Input, NativeSelect, Textarea } from '@/components/ui/input'
+import { Input, Textarea } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/misc'
+import { Select } from '@/components/ui/select'
+import { TimePicker } from '@/components/ui/time-picker'
 import { fieldErrors } from '@/lib/hooks'
 import { courseColors, dayNames } from '@/lib/labels'
 import { uuidv7 } from '@/lib/uuid'
 import { cn, courseStyle } from '@/lib/utils'
+
+const dayOptions = dayNames.slice(1).map((d, i) => ({ value: String(i + 1), label: d }))
 
 type Slot = Schemas['ScheduleInput'] & { key: string }
 
@@ -155,13 +159,12 @@ export function CourseForm(
               <div className="grid grid-cols-[1fr_auto] gap-2">
                 <div className="grid gap-1.5">
                   <Label htmlFor={`slot-day-${s.key}`}>Hari</Label>
-                  <NativeSelect id={`slot-day-${s.key}`} value={s.day_of_week} onChange={(e) => setSlot(s.key, { day_of_week: Number(e.target.value) })}>
-                    {dayNames.slice(1).map((d, idx) => (
-                      <option key={d} value={idx + 1}>
-                        {d}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <Select
+                    id={`slot-day-${s.key}`}
+                    value={String(s.day_of_week)}
+                    onValueChange={(v) => setSlot(s.key, { day_of_week: Number(v) })}
+                    options={dayOptions}
+                  />
                 </div>
                 <Button
                   variant="ghost"
@@ -173,16 +176,16 @@ export function CourseForm(
                   <Trash2Icon />
                 </Button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor={`slot-start-${s.key}`}>Mulai</Label>
-                  <Input id={`slot-start-${s.key}`} type="time" value={s.start_time} onChange={(e) => setSlot(s.key, { start_time: e.target.value })} />
+                  <TimePicker id={`slot-start-${s.key}`} value={s.start_time} onChange={(t) => setSlot(s.key, { start_time: t })} />
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor={`slot-end-${s.key}`}>Selesai</Label>
-                  <Input id={`slot-end-${s.key}`} type="time" value={s.end_time} onChange={(e) => setSlot(s.key, { end_time: e.target.value })} />
+                  <TimePicker id={`slot-end-${s.key}`} value={s.end_time} onChange={(t) => setSlot(s.key, { end_time: t })} />
                 </div>
-                <div className="grid gap-1.5">
+                <div className="col-span-2 grid gap-1.5 sm:col-span-1">
                   <Label htmlFor={`slot-room-${s.key}`}>Ruang</Label>
                   <Input id={`slot-room-${s.key}`} maxLength={100} value={s.room} onChange={(e) => setSlot(s.key, { room: e.target.value })} />
                 </div>
@@ -220,14 +223,12 @@ export function CourseForm(
 
       {props.mode === 'edit' && (
         <Field id="c-letter" label="Huruf resmi (KHS)" error={errs.final_grade_letter} hint="Mengalahkan huruf hasil hitung untuk IPS dan IPK.">
-          <NativeSelect id="c-letter" value={letter} onChange={(e) => setLetter(e.target.value)}>
-            <option value="">Belum ada</option>
-            {props.letters.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </NativeSelect>
+          <Select
+            id="c-letter"
+            value={letter}
+            onValueChange={setLetter}
+            options={[{ value: '', label: 'Belum ada' }, ...props.letters.map((l) => ({ value: l, label: l }))]}
+          />
         </Field>
       )}
 

@@ -37,11 +37,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input, NativeSelect, Textarea } from '@/components/ui/input'
+import { FileInput } from '@/components/ui/file-input'
+import { Input, Textarea } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
-import { formatShortDate, formatTimestamp } from '@/lib/dates'
+import { Select } from '@/components/ui/select'
+import { formatTimestamp } from '@/lib/dates'
 import { fieldErrors, useAppSettings, useNow } from '@/lib/hooks'
-import { materialKindLabel, meetingKindLabel } from '@/lib/labels'
+import { materialKindLabel, meetingOption } from '@/lib/labels'
 import { addedAgo, fileExtension, hostOf, type MaterialKind } from '@/lib/materials'
 import { uuidv7 } from '@/lib/uuid'
 import { cn, courseStyle, formatBytes } from '@/lib/utils'
@@ -382,14 +384,13 @@ function MeetingSelect({
   const meetings = useQuery(meetingsQuery(courseId))
   return (
     <Field id={id} label="Pertemuan" error={error}>
-      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)} disabled={!courseId}>
-        <option value="">Tidak terkait pertemuan</option>
-        {meetings.data?.map((m) => (
-          <option key={m.id} value={m.id}>
-            {`Pertemuan ${m.number} · ${formatShortDate(m.date)}${m.kind !== 'lecture' ? ` · ${meetingKindLabel[m.kind]}` : ''}${m.topic ? ` · ${m.topic}` : ''}`}
-          </option>
-        ))}
-      </NativeSelect>
+      <Select
+        id={id}
+        value={value}
+        onValueChange={onChange}
+        disabled={!courseId}
+        options={[{ value: '', label: 'Tidak terkait pertemuan' }, ...(meetings.data ?? []).map(meetingOption)]}
+      />
     </Field>
   )
 }
@@ -489,20 +490,15 @@ export function AddMaterialForm({
       <div className={cn('grid gap-4', !fixedCourseId && 'sm:grid-cols-2')}>
         {!fixedCourseId && (
           <Field id="m-course" label="Matkul" error={errs.course_id}>
-            <NativeSelect
+            <Select
               id="m-course"
               value={courseId}
-              onChange={(e) => {
-                setCourseId(e.target.value)
+              onValueChange={(v) => {
+                setCourseId(v)
                 setMeetingId('')
               }}
-            >
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </NativeSelect>
+              options={courses.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+            />
           </Field>
         )}
         <MeetingSelect id="m-meeting" courseId={courseId} value={meetingId} onChange={setMeetingId} error={errs.meeting_id} />
@@ -510,13 +506,7 @@ export function AddMaterialForm({
 
       {kind === 'file' && (
         <Field id="m-file" label="File" error={errs.file} hint="PDF dan gambar bisa dibuka langsung di browser.">
-          <Input
-            id="m-file"
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="h-auto py-2.5"
-            {...invalidProps('m-file', errs.file)}
-          />
+          <FileInput id="m-file" file={file} onFileChange={setFile} {...invalidProps('m-file', errs.file)} />
         </Field>
       )}
       {kind === 'link' && (

@@ -71,10 +71,26 @@ export function daysBetween(a: string, b: string): number {
 }
 
 /** Monday on or before a YYYY-MM-DD date. */
-function mondayOf(date: string): string {
+export function mondayOf(date: string): string {
   const [y, m, d] = date.split('-').map(Number)
   const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay() // 0 = Sunday
   return addDays(date, -((weekday + 6) % 7))
+}
+
+/** Adds months to a YYYY-MM-DD date, keeping the day where the month allows (31 Jan + 1 = 28/29 Feb). */
+export function addMonths(date: string, months: number): string {
+  const [y, m, d] = date.split('-').map(Number)
+  const first = new Date(Date.UTC(y, m - 1 + months, 1))
+  const year = first.getUTCFullYear()
+  const month = first.getUTCMonth()
+  const last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+  return `${year}-${pad(month + 1)}-${pad(Math.min(d, last))}`
+}
+
+/** The 42 days (6 Monday-first weeks) shown for the month that contains date. */
+export function monthGrid(date: string): string[] {
+  const start = mondayOf(`${date.slice(0, 7)}-01`)
+  return Array.from({ length: 42 }, (_, i) => addDays(start, i))
 }
 
 export type SemesterWeek = {

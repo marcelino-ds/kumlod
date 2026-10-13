@@ -11,7 +11,6 @@ import {
   ListIcon,
   ListTodoIcon,
   PlusIcon,
-  SearchIcon,
   SearchXIcon,
   TriangleAlertIcon,
 } from 'lucide-react'
@@ -23,7 +22,9 @@ import { coursesQuery, semestersQuery } from '@/api/queries'
 import { AttendanceDots, EmptyState, ErrorState, LevelBadge, LoadingList, PageHeader } from '@/components/common'
 import { heroChipClass, HeroStat, PageHero } from '@/components/page-hero'
 import { Button } from '@/components/ui/button'
+import { SearchInput } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
+import { Tooltip } from '@/components/ui/popover'
 import { localDate, localTime, parseLocalDate } from '@/lib/dates'
 import { useAppSettings, useNow } from '@/lib/hooks'
 import { attendanceSummaryText, dayShort, scheduleSummary } from '@/lib/labels'
@@ -199,18 +200,13 @@ function CoursesPage() {
         </div>
 
         <div className="flex min-w-0 flex-1 gap-2.5 xl:justify-end">
-          <label className="relative min-w-0 flex-1 xl:max-w-xs">
-            <span className="sr-only">Cari matkul</span>
-            <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari matkul"
-              title="Cari nama matkul, kode, atau dosen"
-              className="h-11 w-full rounded-full bg-card pr-4 pl-10 text-base shadow-xs ring-1 ring-black/[0.04] outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30 md:text-sm dark:ring-white/[0.06]"
-            />
-          </label>
+          <SearchInput
+            label="Cari nama matkul, kode, atau dosen"
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Cari matkul"
+            className="flex-1 xl:max-w-xs"
+          />
 
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -243,20 +239,20 @@ function CoursesPage() {
                 ['list', 'Daftar', ListIcon],
               ] as const
             ).map(([v, label, Icon]) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={view === v}
-                aria-label={label}
-                title={label}
-                onClick={() => setSearch({ view: v })}
-                className={cn(
-                  'inline-flex size-9 items-center justify-center rounded-full transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none',
-                  view === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <Icon className="size-4" />
-              </button>
+              <Tooltip key={v} content={label}>
+                <button
+                  type="button"
+                  aria-pressed={view === v}
+                  aria-label={label}
+                  onClick={() => setSearch({ view: v })}
+                  className={cn(
+                    'inline-flex size-9 items-center justify-center rounded-full transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none',
+                    view === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <Icon className="size-4" />
+                </button>
+              </Tooltip>
             ))}
           </div>
         </div>
@@ -429,24 +425,25 @@ const chip = 'tint-border inline-flex items-center rounded-full border bg-card/6
 function GradeBubble({ course: c, className }: { course: Course; className?: string }) {
   const letter = c.grade.official_letter ?? c.grade.letter
   return (
-    <span
-      className={cn(
-        'flex size-12 shrink-0 flex-col items-center justify-center rounded-full leading-none',
-        letter ? 'bg-card shadow-xs' : 'border-2 border-dashed border-foreground/20 text-muted-foreground',
-        className,
-      )}
-      title={c.grade.official_letter ? 'Huruf resmi KHS' : c.grade.is_final ? 'Huruf akhir' : 'Huruf sementara'}
-    >
-      <span aria-hidden className={letter ? 'text-lg font-extrabold' : 'text-[0.6rem] font-bold uppercase'}>
-        {letter ?? 'Nilai'}
+    <Tooltip content={c.grade.official_letter ? 'Huruf resmi KHS' : c.grade.is_final ? 'Huruf akhir' : 'Huruf sementara'}>
+      <span
+        className={cn(
+          'flex size-12 shrink-0 flex-col items-center justify-center rounded-full leading-none',
+          letter ? 'bg-card shadow-xs' : 'border-2 border-dashed border-foreground/20 text-muted-foreground',
+          className,
+        )}
+      >
+        <span aria-hidden className={letter ? 'text-lg font-extrabold' : 'text-[0.6rem] font-bold uppercase'}>
+          {letter ?? 'Nilai'}
+        </span>
+        <span aria-hidden className="mt-0.5 text-[0.6rem] font-bold text-muted-foreground uppercase">
+          {c.grade.official_letter ? 'KHS' : letter && !c.grade.is_final ? 'sem.' : letter ? '' : '?'}
+        </span>
+        <span className="sr-only">
+          {letter ? `Nilai ${letter}${c.grade.official_letter ? ' dari KHS' : c.grade.is_final ? '' : ' sementara'}` : 'Belum ada nilai'}
+        </span>
       </span>
-      <span aria-hidden className="mt-0.5 text-[0.6rem] font-bold text-muted-foreground uppercase">
-        {c.grade.official_letter ? 'KHS' : letter && !c.grade.is_final ? 'sem.' : letter ? '' : '?'}
-      </span>
-      <span className="sr-only">
-        {letter ? `Nilai ${letter}${c.grade.official_letter ? ' dari KHS' : c.grade.is_final ? '' : ' sementara'}` : 'Belum ada nilai'}
-      </span>
-    </span>
+    </Tooltip>
   )
 }
 

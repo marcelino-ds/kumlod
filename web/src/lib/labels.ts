@@ -1,4 +1,5 @@
 import type { components } from '@/api/schema'
+import { formatShortDate } from '@/lib/dates'
 
 type S = components['schemas']
 
@@ -134,3 +135,17 @@ export const gradeScalePresets: { id: string; label: string; scale: GradeScaleEn
 
 /** Colors offered when creating a course. */
 export const courseColors = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#14b8a6', '#64748b']
+
+/** One-tap times in the deadline time picker. */
+export const deadlinePresets = ['08:00', '12:00', '17:00', '23:59']
+
+/** Select options from a label map, in key order. */
+export function labelOptions<K extends string>(labels: Record<K, string>): { value: K; label: string }[] {
+  return (Object.keys(labels) as K[]).map((value) => ({ value, label: labels[value] }))
+}
+
+/** Select option for a meeting: "Pertemuan 3 · Sen, 12 Okt" with kind and topic below. */
+export function meetingOption(m: Pick<S['Meeting'], 'id' | 'number' | 'date' | 'kind' | 'topic'>): { value: string; label: string; hint?: string } {
+  const hint = [m.kind !== 'lecture' ? meetingKindLabel[m.kind] : '', m.topic].filter(Boolean).join(' · ')
+  return { value: m.id, label: `Pertemuan ${m.number} · ${formatShortDate(m.date)}`, hint: hint || undefined }
+}

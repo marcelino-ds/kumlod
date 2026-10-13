@@ -7,10 +7,12 @@ import { coursesQuery, useCreateTask } from '@/api/queries'
 import { Field, FormError, invalidProps } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { TimePicker } from '@/components/ui/time-picker'
 import { localDate, zonedToDate } from '@/lib/dates'
 import { fieldErrors, useActiveSemester, useAppSettings } from '@/lib/hooks'
-import { priorityLabel } from '@/lib/labels'
+import { deadlinePresets, priorityLabel } from '@/lib/labels'
 import { uuidv7 } from '@/lib/uuid'
 import { cn, courseStyle } from '@/lib/utils'
 
@@ -124,10 +126,10 @@ function QuickAddForm({ prefill, onDone }: { prefill: Prefill; onDone: () => voi
 
       <div className="grid grid-cols-2 gap-3">
         <Field id="qa-date" label="Tanggal" error={errs.deadline}>
-          <Input id="qa-date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+          <DatePicker id="qa-date" quick value={date} onChange={setDate} {...invalidProps('qa-date', errs.deadline)} />
         </Field>
         <Field id="qa-time" label="Jam">
-          <Input id="qa-time" type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
+          <TimePicker id="qa-time" presets={deadlinePresets} value={time} onChange={setTime} />
         </Field>
       </div>
 

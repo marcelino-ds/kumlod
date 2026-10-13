@@ -32,6 +32,7 @@ import { useQuickAdd } from '@/components/QuickAddTask'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/misc'
+import { Tooltip } from '@/components/ui/popover'
 import { formatLongDate, localDate, localTime, relativeDay, semesterWeek, semesterWeekLabel, timeLeft } from '@/lib/dates'
 import { useAppSettings, useNow } from '@/lib/hooks'
 import { attendanceSummaryText, meetingKindLabel, taskStatusLabel } from '@/lib/labels'
@@ -528,14 +529,15 @@ function MeetingCard({ item, status, highlight }: { item: Schemas['TodayMeeting'
         {m.start_time || '--:--'}
         {m.end_time && `-${m.end_time}`} · Pertemuan {m.number}
       </p>
-      <Link
-        to="/matkul/$courseId"
-        params={{ courseId: course.id }}
-        title={course.name}
-        className={cn('mt-1.5 line-clamp-2 pr-12 text-xl leading-tight font-extrabold tracking-tight hover:underline', featured && 'tint-ink', cancelled && 'line-through')}
-      >
-        {course.name}
-      </Link>
+      <Tooltip content={course.name}>
+        <Link
+          to="/matkul/$courseId"
+          params={{ courseId: course.id }}
+          className={cn('mt-1.5 line-clamp-2 pr-12 text-xl leading-tight font-extrabold tracking-tight hover:underline', featured && 'tint-ink', cancelled && 'line-through')}
+        >
+          {course.name}
+        </Link>
+      </Tooltip>
       {(m.room || m.topic) && (
         <div className="mt-1.5 grid gap-0.5 text-sm text-foreground/70">
           {m.room && (
@@ -545,9 +547,9 @@ function MeetingCard({ item, status, highlight }: { item: Schemas['TodayMeeting'
             </p>
           )}
           {m.topic && (
-            <p className="truncate" title={m.topic}>
-              {m.topic}
-            </p>
+            <Tooltip content={m.topic}>
+              <p className="truncate">{m.topic}</p>
+            </Tooltip>
           )}
         </div>
       )}

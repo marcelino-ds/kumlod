@@ -10,7 +10,6 @@ import {
   FlameIcon,
   ListTodoIcon,
   PlusIcon,
-  SearchIcon,
   SearchXIcon,
   TriangleAlertIcon,
 } from 'lucide-react'
@@ -24,7 +23,9 @@ import { useQuickAdd } from '@/components/QuickAddTask'
 import { TaskDetailDialog } from '@/components/TaskDetailDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { SearchInput } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/misc'
+import { Tooltip } from '@/components/ui/popover'
 import { daysBetween, localDate, localTime, parseLocalDate, timeLeft } from '@/lib/dates'
 import { useActiveSemester, useAppSettings, useNow } from '@/lib/hooks'
 import { taskStatusLabel } from '@/lib/labels'
@@ -168,17 +169,13 @@ function TasksPage() {
               countLabel="belum selesai"
             />
           )}
-          <label className="relative min-w-0 flex-1 md:ml-auto md:max-w-xs">
-            <span className="sr-only">Cari tugas</span>
-            <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari tugas"
-              className="h-11 w-full rounded-full bg-card pr-4 pl-10 text-base shadow-xs ring-1 ring-black/[0.04] outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30 md:text-sm dark:ring-white/[0.06]"
-            />
-          </label>
+          <SearchInput
+            label="Cari tugas"
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Cari tugas"
+            className="flex-1 md:ml-auto md:max-w-xs"
+          />
         </div>
       </div>
 
@@ -477,16 +474,17 @@ function TaskCard({ task, now, timeZone, showCourse, showDate }: { task: Task; n
       </div>
 
       {task.submission_url && !done && (
-        <a
-          href={task.submission_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="relative z-10 -mt-1.5 -mr-1.5 inline-flex size-11 shrink-0 items-center justify-center self-start rounded-full bg-muted text-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
-          aria-label={`Buka link pengumpulan ${task.title}`}
-          title="Buka link pengumpulan"
-        >
-          <ArrowUpRightIcon className="size-4" />
-        </a>
+        <Tooltip content="Buka link pengumpulan">
+          <a
+            href={task.submission_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative z-10 -mt-1.5 -mr-1.5 inline-flex size-11 shrink-0 items-center justify-center self-start rounded-full bg-muted text-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
+            aria-label={`Buka link pengumpulan ${task.title}`}
+          >
+            <ArrowUpRightIcon className="size-4" />
+          </a>
+        </Tooltip>
       )}
     </li>
   )

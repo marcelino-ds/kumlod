@@ -9,10 +9,13 @@ import { coursesQuery, gradesQuery, meetingsQuery, taskQuery, useDeleteTask, use
 import { backLinkClass, CourseChip, ErrorState, Field, FormError, invalidProps, LoadingList, PageHeader } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/dialog'
-import { Input, NativeSelect, Textarea } from '@/components/ui/input'
-import { formatShortDate, formatTimestamp, localDate, localTime, zonedToDate } from '@/lib/dates'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Input, Textarea } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { TimePicker } from '@/components/ui/time-picker'
+import { formatTimestamp, localDate, localTime, zonedToDate } from '@/lib/dates'
 import { fieldErrors, useAppSettings } from '@/lib/hooks'
-import { meetingKindLabel, priorityLabel, taskStatusLabel } from '@/lib/labels'
+import { deadlinePresets, labelOptions, meetingOption, priorityLabel, taskStatusLabel } from '@/lib/labels'
 
 export const Route = createFileRoute('/_app/tugas/$taskId')({
   component: TaskPage,
@@ -38,9 +41,6 @@ function TaskPage() {
     </div>
   )
 }
-
-const statuses = Object.keys(taskStatusLabel) as Schemas['TaskStatus'][]
-const priorities = Object.keys(priorityLabel) as Schemas['TaskPriority'][]
 
 function TaskForm({ task, timeZone }: { task: Task; timeZone: string }) {
   const router = useRouter()
@@ -123,56 +123,40 @@ function TaskForm({ task, timeZone }: { task: Task; timeZone: string }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="t-status" label="Status" error={errs.status}>
-            <NativeSelect id="t-status" value={status} onChange={(e) => setStatus(e.target.value as Schemas['TaskStatus'])}>
-              {statuses.map((s) => (
-                <option key={s} value={s}>
-                  {taskStatusLabel[s]}
-                </option>
-              ))}
-            </NativeSelect>
+            <Select id="t-status" value={status} onValueChange={(v) => setStatus(v as Schemas['TaskStatus'])} options={labelOptions(taskStatusLabel)} />
           </Field>
           <Field id="t-priority" label="Prioritas" error={errs.priority}>
-            <NativeSelect id="t-priority" value={priority} onChange={(e) => setPriority(e.target.value as Schemas['TaskPriority'])}>
-              {priorities.map((p) => (
-                <option key={p} value={p}>
-                  {priorityLabel[p]}
-                </option>
-              ))}
-            </NativeSelect>
+            <Select id="t-priority" value={priority} onValueChange={(v) => setPriority(v as Schemas['TaskPriority'])} options={labelOptions(priorityLabel)} />
           </Field>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Field id="t-date" label="Tanggal deadline" error={errs.deadline}>
-            <Input id="t-date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+            <DatePicker id="t-date" quick value={date} onChange={setDate} {...invalidProps('t-date', errs.deadline)} />
           </Field>
           <Field id="t-time" label="Jam">
-            <Input id="t-time" type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
+            <TimePicker id="t-time" presets={deadlinePresets} value={time} onChange={setTime} />
           </Field>
         </div>
 
         <Field id="t-course" label="Matkul" error={errs.course_id}>
-          <NativeSelect id="t-course" value={courseId} onChange={(e) => changeCourse(e.target.value)}>
-            <option value="">Tanpa matkul</option>
-            {courses.data?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </NativeSelect>
+          <Select
+            id="t-course"
+            value={courseId}
+            onValueChange={changeCourse}
+            options={[{ value: '', label: 'Tanpa matkul' }, ...(courses.data ?? []).map((c) => ({ value: c.id, label: c.name, color: c.color }))]}
+          />
         </Field>
 
         {courseId && (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="t-meeting" label="Pertemuan" error={errs.meeting_id}>
-              <NativeSelect id="t-meeting" value={meetingId} onChange={(e) => setMeetingId(e.target.value)}>
-                <option value="">Tidak terkait pertemuan</option>
-                {meetings.data?.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {`Pertemuan ${m.number} · ${formatShortDate(m.date)}${m.kind !== 'lecture' ? ` · ${meetingKindLabel[m.kind]}` : ''}`}
-                  </option>
-                ))}
-              </NativeSelect>
+              <Select
+                id="t-meeting"
+                value={meetingId}
+                onValueChange={setMeetingId}
+                options={[{ value: '', label: 'Tidak terkait pertemuan' }, ...(meetings.data ?? []).map(meetingOption)]}
+              />
             </Field>
             <Field
               id="t-component"
@@ -180,14 +164,19 @@ function TaskForm({ task, timeZone }: { task: Task; timeZone: string }) {
               error={errs.grade_component_id}
               hint="Nilai tugas dipakai untuk komponen bersumber tugas."
             >
-              <NativeSelect id="t-component" value={componentId} onChange={(e) => setComponentId(e.target.value)}>
-                <option value="">Tidak dihitung ke komponen</option>
-                {grades.data?.components.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {`${g.name} (${g.weight.toLocaleString('id-ID')}%)${g.source === 'tasks' ? '' : ' · manual'}`}
-                  </option>
-                ))}
-              </NativeSelect>
+              <Select
+                id="t-component"
+                value={componentId}
+                onValueChange={setComponentId}
+                options={[
+                  { value: '', label: 'Tidak dihitung ke komponen' },
+                  ...(grades.data?.components ?? []).map((g) => ({
+                    value: g.id,
+                    label: `${g.name} (${g.weight.toLocaleString('id-ID')}%)`,
+                    hint: g.source === 'tasks' ? 'Dari nilai tugas' : 'Diisi manual',
+                  })),
+                ]}
+              />
             </Field>
           </div>
         )}

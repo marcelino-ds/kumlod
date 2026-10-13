@@ -12,7 +12,6 @@ import {
   LayersIcon,
   LayoutGridIcon,
   PlusIcon,
-  SearchIcon,
   SearchXIcon,
   XIcon,
 } from 'lucide-react'
@@ -26,7 +25,9 @@ import { AddMaterialForm, kindIcon, MaterialCard, useMaterialActions, type Mater
 import { HeroBar, heroChipClass, HeroStat, PageHero } from '@/components/page-hero'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { SearchInput } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
+import { Tooltip } from '@/components/ui/popover'
 import { localDate, parseLocalDate } from '@/lib/dates'
 import { useActiveSemester, useAppSettings, useDebounced, useNow } from '@/lib/hooks'
 import { materialKindLabel, meetingKindLabel } from '@/lib/labels'
@@ -289,25 +290,22 @@ function MaterialsPage() {
         <div className="mb-6 grid gap-2.5">
           <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
             <KindFilter value={search.kind} counts={counts} onChange={(kind) => setSearch({ kind })} />
-            <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Cari materi</span>
-              <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                ref={searchRef}
-                type="search"
-                enterKeyHint="search"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Cari judul, isi catatan, atau nama file"
-                className="peer h-11 w-full rounded-full bg-card pr-12 pl-10 text-base shadow-xs ring-1 ring-black/[0.04] outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30 md:text-sm dark:ring-white/[0.06]"
-              />
-              <kbd
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 right-4 hidden h-6 -translate-y-1/2 items-center rounded-md bg-muted px-2 font-sans text-xs font-bold text-muted-foreground peer-focus:hidden lg:inline-flex"
-              >
-                /
-              </kbd>
-            </label>
+            <SearchInput
+              ref={searchRef}
+              label="Cari materi"
+              value={text}
+              onValueChange={setText}
+              placeholder="Cari judul, isi catatan, atau nama file"
+              className="flex-1"
+              trailing={
+                <kbd
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 right-4 hidden h-6 -translate-y-1/2 items-center rounded-md bg-muted px-2 font-sans text-xs font-bold text-muted-foreground peer-focus:hidden lg:inline-flex"
+                >
+                  /
+                </kbd>
+              }
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -600,20 +598,20 @@ function ViewToggle({ value, grouping, onChange }: { value: View; grouping: 'cou
   return (
     <div role="group" aria-label="Tampilan" className={cn('flex shrink-0 gap-1 rounded-full bg-card p-1', pill)}>
       {options.map(([v, label, Icon]) => (
-        <button
-          key={v}
-          type="button"
-          aria-pressed={value === v}
-          aria-label={label}
-          title={label}
-          onClick={() => onChange(v)}
-          className={cn(
-            'inline-flex size-9 items-center justify-center rounded-full transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none',
-            value === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <Icon className="size-4" />
-        </button>
+        <Tooltip key={v} content={label}>
+          <button
+            type="button"
+            aria-pressed={value === v}
+            aria-label={label}
+            onClick={() => onChange(v)}
+            className={cn(
+              'inline-flex size-9 items-center justify-center rounded-full transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none',
+              value === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="size-4" />
+          </button>
+        </Tooltip>
       ))}
     </div>
   )
@@ -633,9 +631,11 @@ const panel = 'mb-4 flex break-inside-avoid flex-col rounded-[1.75rem] bg-foregr
 
 function AddInGroup({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <Button variant="ghost" size="icon" className="shrink-0 bg-card shadow-xs" onClick={onClick} aria-label={label} title={label}>
-      <PlusIcon />
-    </Button>
+    <Tooltip content={label}>
+      <Button variant="ghost" size="icon" className="shrink-0 bg-card shadow-xs" onClick={onClick} aria-label={label}>
+        <PlusIcon />
+      </Button>
+    </Tooltip>
   )
 }
 

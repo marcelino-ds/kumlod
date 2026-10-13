@@ -6,8 +6,9 @@ import { qk, useLogin } from '@/api/queries'
 import { Brand, FormError } from '@/components/common'
 import { LoginIllustration } from '@/components/LoginIllustration'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Input, PasswordInput } from '@/components/ui/input'
 import { useOnline } from '@/lib/hooks'
+import { cn } from '@/lib/utils'
 
 /** Only same-site paths are allowed as a redirect target. */
 function safeRedirect(value: unknown): string | undefined {
@@ -60,7 +61,7 @@ function LoginPage() {
             <Brand className="mb-10 md:hidden" />
             <h1 className="text-4xl font-extrabold tracking-tight">Masuk</h1>
 
-            <form onSubmit={submit} className="mt-8 grid gap-3">
+            <form onSubmit={submit} className="mt-8 grid gap-3" noValidate>
               {!online && (
                 <p role="status" className="flex items-center gap-2 rounded-2xl bg-amber-100 px-4 py-3 text-sm font-medium text-amber-950 dark:bg-amber-950 dark:text-amber-200">
                   <WifiOffIcon className="size-4 shrink-0" aria-hidden /> Kamu sedang offline.
@@ -88,10 +89,9 @@ function LoginPage() {
                 <label htmlFor="password" className="sr-only">
                   Password
                 </label>
-                <LockIcon className={iconClass} aria-hidden />
-                <Input
+                <LockIcon className={cn(iconClass, 'z-10')} aria-hidden />
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder="Password"
                   autoComplete="current-password"
                   required

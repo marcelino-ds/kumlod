@@ -33,6 +33,7 @@ import {
   usePushDevice,
   type PushState,
 } from '@/components/settings-sections'
+import { ConfirmDialog } from '@/components/ui/dialog'
 import { useAppSettings } from '@/lib/hooks'
 import { timeZoneShort } from '@/lib/settings'
 import { cn } from '@/lib/utils'
@@ -55,11 +56,13 @@ function SettingsPage() {
   const { dirty } = useSettingsCtx()
   const install = useMemo(showInstall, [])
 
-  // Warn before leaving with an unsaved grade scale, IPK, or password.
-  useBlocker({
-    shouldBlockFn: () => !window.confirm('Ada perubahan yang belum disimpan. Tinggalkan halaman ini?'),
+  // Warn before leaving with an unsaved grade scale, IPK, or password. Closing
+  // or reloading the tab still shows the browser's own prompt: pages cannot replace it.
+  const blocker = useBlocker({
+    shouldBlockFn: () => true,
     disabled: !dirty,
     enableBeforeUnload: dirty,
+    withResolver: true,
   })
 
   const nav: NavItem[] = [
@@ -116,6 +119,15 @@ function SettingsPage() {
           <About />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={blocker.status === 'blocked'}
+        onOpenChange={(o) => !o && blocker.reset?.()}
+        title="Tinggalkan pengaturan?"
+        description="Ada perubahan yang belum disimpan. Kalau pindah halaman sekarang, perubahan itu hilang."
+        confirmLabel="Tinggalkan"
+        onConfirm={() => blocker.proceed?.()}
+      />
     </div>
   )
 }

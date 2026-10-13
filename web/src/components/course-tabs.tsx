@@ -32,14 +32,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input, NativeSelect, Textarea } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Input, Textarea } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
+import { Select } from '@/components/ui/select'
+import { TimePicker } from '@/components/ui/time-picker'
 import { localDate, relativeDay } from '@/lib/dates'
 import { fieldErrors, useAppSettings, useNow } from '@/lib/hooks'
-import { meetingKindLabel, meetingStatusLabel, targetStatusLabel } from '@/lib/labels'
+import { labelOptions, meetingKindLabel, meetingStatusLabel, targetStatusLabel } from '@/lib/labels'
 import { groupTasks } from '@/lib/tasks'
 import { uuidv7 } from '@/lib/uuid'
 import { cn, courseStyle, formatNumber } from '@/lib/utils'
+
+const gradeSourceOptions = [
+  { value: 'manual', label: 'Isi manual' },
+  { value: 'tasks', label: 'Dari tugas' },
+]
 
 // ---------------- Meetings ----------------
 
@@ -218,32 +226,23 @@ function MeetingForm({ course, meeting, onDone }: { course: Course; meeting?: Me
         <DialogDescription>{course.name}</DialogDescription>
       </DialogHeader>
       <Field id="mt-date" label="Tanggal" error={errs.date}>
-        <Input id="mt-date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} {...invalidProps('mt-date', errs.date)} />
+        <DatePicker id="mt-date" value={date} onChange={setDate} {...invalidProps('mt-date', errs.date)} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field id="mt-start" label="Mulai" error={errs.start_time}>
-          <Input id="mt-start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+          <TimePicker id="mt-start" clearable value={start} onChange={setStart} {...invalidProps('mt-start', errs.start_time)} />
         </Field>
         <Field id="mt-end" label="Selesai" error={errs.end_time}>
-          <Input id="mt-end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <TimePicker id="mt-end" clearable value={end} onChange={setEnd} {...invalidProps('mt-end', errs.end_time)} />
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field id="mt-kind" label="Jenis" error={errs.kind}>
-          <NativeSelect id="mt-kind" value={kind} onChange={(e) => setKind(e.target.value as Schemas['MeetingKind'])}>
-            {(Object.keys(meetingKindLabel) as Schemas['MeetingKind'][]).map((k) => (
-              <option key={k} value={k}>
-                {meetingKindLabel[k]}
-              </option>
-            ))}
-          </NativeSelect>
+          <Select id="mt-kind" value={kind} onValueChange={(v) => setKind(v as Schemas['MeetingKind'])} options={labelOptions(meetingKindLabel)} />
         </Field>
         {meeting ? (
           <Field id="mt-status" label="Status" error={errs.status} hint="Pertemuan batal tidak dihitung ke absen.">
-            <NativeSelect id="mt-status" value={status} onChange={(e) => setStatus(e.target.value as Schemas['MeetingStatus'])}>
-              <option value="scheduled">{meetingStatusLabel.scheduled}</option>
-              <option value="cancelled">{meetingStatusLabel.cancelled}</option>
-            </NativeSelect>
+            <Select id="mt-status" value={status} onValueChange={(v) => setStatus(v as Schemas['MeetingStatus'])} options={labelOptions(meetingStatusLabel)} />
           </Field>
         ) : (
           <Field id="mt-room" label="Ruang" error={errs.room}>
@@ -392,20 +391,14 @@ export function GradesTab({ course }: { course: Course }) {
             <label htmlFor="official-letter" className="text-xs font-semibold opacity-80">
               Huruf resmi (KHS)
             </label>
-            <NativeSelect
+            <Select
               id="official-letter"
               className="mt-2 border-transparent text-base font-bold text-foreground"
               value={g.official_letter ?? ''}
               disabled={updateCourse.isPending}
-              onChange={(e) => setOfficial(e.target.value)}
-            >
-              <option value="">Belum ada</option>
-              {letters.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </NativeSelect>
+              onValueChange={setOfficial}
+              options={[{ value: '', label: 'Belum ada' }, ...letters.map((l) => ({ value: l, label: l }))]}
+            />
           </div>
         </div>
 
@@ -570,10 +563,12 @@ function ComponentsForm({ courseId, grades, onDone }: { courseId: string; grades
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Field id={`gc-source-${r.key}`} label="Sumber">
-                <NativeSelect id={`gc-source-${r.key}`} value={r.source} onChange={(e) => setRow(r.key, { source: e.target.value as Schemas['GradeSource'] })}>
-                  <option value="manual">Isi manual</option>
-                  <option value="tasks">Dari tugas</option>
-                </NativeSelect>
+                <Select
+                  id={`gc-source-${r.key}`}
+                  value={r.source}
+                  onValueChange={(v) => setRow(r.key, { source: v as Schemas['GradeSource'] })}
+                  options={gradeSourceOptions}
+                />
               </Field>
               {r.source === 'manual' && (
                 <Field id={`gc-score-${r.key}`} label="Nilai (0-100)">

@@ -25,11 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input, NativeSelect } from '@/components/ui/input'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Input } from '@/components/ui/input'
+import { Checkbox, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
+import { Select } from '@/components/ui/select'
 import { formatShortDate, localDate, semesterWeek } from '@/lib/dates'
 import { fieldErrors, useAppSettings, useNow } from '@/lib/hooks'
-import { termLabel } from '@/lib/labels'
+import { labelOptions, termLabel } from '@/lib/labels'
 import { uuidv7 } from '@/lib/uuid'
 import { cn } from '@/lib/utils'
 
@@ -250,26 +252,20 @@ function SemesterForm({ semester, isFirst, onDone }: { semester?: Semester; isFi
           <Input id="sem-year" maxLength={20} placeholder="2026/2027" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} />
         </Field>
         <Field id="sem-term" label="Jenis" error={errs.term}>
-          <NativeSelect id="sem-term" value={term} onChange={(e) => setTerm(e.target.value as Schemas['SemesterTerm'])}>
-            {(Object.keys(termLabel) as Schemas['SemesterTerm'][]).map((t) => (
-              <option key={t} value={t}>
-                {termLabel[t]}
-              </option>
-            ))}
-          </NativeSelect>
+          <Select id="sem-term" value={term} onValueChange={(v) => setTerm(v as Schemas['SemesterTerm'])} options={labelOptions(termLabel)} />
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field id="sem-start" label="Mulai" error={errs.start_date}>
-          <Input id="sem-start" type="date" required value={start} onChange={(e) => setStart(e.target.value)} {...invalidProps('sem-start', errs.start_date)} />
+          <DatePicker id="sem-start" value={start} onChange={setStart} {...invalidProps('sem-start', errs.start_date)} />
         </Field>
         <Field id="sem-end" label="Selesai" error={errs.end_date}>
-          <Input id="sem-end" type="date" required value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} {...invalidProps('sem-end', errs.end_date)} />
+          <DatePicker id="sem-end" value={end} min={start || undefined} onChange={setEnd} {...invalidProps('sem-end', errs.end_date)} />
         </Field>
       </div>
       {!semester && !isFirst && (
-        <label className="flex min-h-11 items-center gap-3 rounded-2xl bg-muted px-4 py-3 text-sm font-medium">
-          <input type="checkbox" className="size-5 shrink-0 accent-[var(--foreground)]" checked={activate} onChange={(e) => setActivate(e.target.checked)} />
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl bg-muted px-4 py-3 text-sm font-medium">
+          <Checkbox className="size-6" checked={activate} onCheckedChange={(v) => setActivate(v === true)} />
           Jadikan semester aktif (semester aktif sekarang jadi arsip)
         </label>
       )}

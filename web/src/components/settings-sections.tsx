@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useRouter } from '@tanstack/react-router'
+import { Collapsible } from 'radix-ui'
 import {
   BellIcon,
   BellOffIcon,
@@ -31,8 +32,11 @@ import { AppearancePicker } from '@/components/AppearanceControl'
 import { Field, FormError, invalidProps } from '@/components/common'
 import { SaveBar, SettingsSection, Stepper, ToggleRow, useAutoSave, useDirty, useSettingsCtx } from '@/components/settings-kit'
 import { Button } from '@/components/ui/button'
-import { Input, NativeSelect } from '@/components/ui/input'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tooltip } from '@/components/ui/popover'
+import { Combobox } from '@/components/ui/select'
+import { TimePicker } from '@/components/ui/time-picker'
 import { localTime, timeZones } from '@/lib/dates'
 import { fieldErrors, useNow } from '@/lib/hooks'
 import { gradeScalePresets, type GradeScaleEntry } from '@/lib/labels'
@@ -206,6 +210,9 @@ function DeviceStatus({ push }: { push: PushDevice }) {
 
 function DigestTime({ value }: { value: string }) {
   const { save } = useSettingsCtx()
+  // The picker edits a draft; the time is saved once it closes, so a slow
+  // hour-then-minute pick does not save (and remount) halfway.
+  const [draft, setDraft] = useState(value)
   const [time, setTime] = useState(value)
   const valid = /^([01]\d|2[0-3]):[0-5]\d$/.test(time)
   const saving = useAutoSave(time, value, valid, (t) =>
@@ -216,7 +223,7 @@ function DigestTime({ value }: { value: string }) {
       <Label htmlFor="r-digest-time" className="font-medium text-muted-foreground">
         Dikirim jam
       </Label>
-      <Input id="r-digest-time" type="time" className="h-11 w-36" value={time} onChange={(e) => setTime(e.target.value)} aria-invalid={!valid || undefined} />
+      <TimePicker id="r-digest-time" className="h-11 w-36" value={draft} onChange={setDraft} onClose={setTime} aria-invalid={!valid || undefined} />
       {saving && <span className="text-xs text-muted-foreground">Menyimpan...</span>}
     </div>
   )
@@ -293,14 +300,14 @@ function ScalePreview({ rows }: { rows: ScaleRow[] }) {
     <figure className="grid gap-1.5">
       <div aria-hidden className="flex h-9 gap-0.5 overflow-hidden rounded-xl">
         {bands.map((b) => (
-          <span
-            key={`${b.letter}-${b.from}`}
-            className="flex min-w-0 items-center justify-center overflow-hidden text-xs font-extrabold text-white"
-            style={{ width: `${Math.max(b.to - b.from, 0)}%`, backgroundColor: bandColor(b.points) }}
-            title={`${b.letter}: ${formatNumber(b.from)}-${formatNumber(b.to)}`}
-          >
-            {b.to - b.from >= 4 ? b.letter : ''}
-          </span>
+            <Tooltip key={`${b.letter}-${b.from}`} content={`${b.letter}: ${formatNumber(b.from)}-${formatNumber(b.to)}`}>
+              <span
+                className="flex min-w-0 items-center justify-center overflow-hidden text-xs font-extrabold text-white"
+                style={{ width: `${Math.max(b.to - b.from, 0)}%`, backgroundColor: bandColor(b.points) }}
+              >
+                {b.to - b.from >= 4 ? b.letter : ''}
+              </span>
+            </Tooltip>
         ))}
       </div>
       <figcaption className="flex justify-between text-[0.7rem] font-semibold text-muted-foreground tabular-nums">
@@ -610,6 +617,11 @@ export function AttendanceSection({ settings: s }: { settings: Settings }) {
 export function GeneralSection({ settings: s }: { settings: Settings }) {
   const { save } = useSettingsCtx()
   const zones = useMemo(() => timeZones(), [])
+  const zoneOptions = useMemo(() => {
+    const at = new Date()
+    const list = zones.includes(s.timezone) ? zones : [s.timezone, ...zones]
+    return list.map((z) => ({ value: z, label: z.replace(/_/g, ' '), hint: timeZoneShort(z, at) }))
+  }, [zones, s.timezone])
   const device = useMemo(() => deviceTimeZone(), [])
   const now = useNow()
   const setZone = (tz: string) => void save({ timezone: tz }, { success: `Zona waktu: ${tz}` }).catch(() => undefined)
@@ -629,14 +641,14 @@ export function GeneralSection({ settings: s }: { settings: Settings }) {
         </div>
         <div className="grid content-start gap-2">
           <Label htmlFor="tz">Zona waktu</Label>
-          <NativeSelect id="tz" value={s.timezone} onChange={(e) => setZone(e.target.value)}>
-            {!zones.includes(s.timezone) && <option value={s.timezone}>{s.timezone}</option>}
-            {zones.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </NativeSelect>
+          <Combobox
+            id="tz"
+            value={s.timezone}
+            onValueChange={setZone}
+            options={zoneOptions}
+            searchLabel="Cari kota atau zona"
+            emptyText="Zona waktu tidak ditemukan"
+          />
           <p className="text-xs text-muted-foreground">
             Sekarang {localTime(now, s.timezone)} {timeZoneShort(s.timezone, now)}. Menentukan "hari ini", jam deadline, dan jadwal reminder.
           </p>
@@ -808,20 +820,20 @@ export function InstallSection() {
           ))}
         </ol>
       </div>
-      <details className="group mt-3">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-          <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+      <Collapsible.Root className="group mt-3">
+        <Collapsible.Trigger className="flex min-h-11 items-center gap-1.5 rounded-full pr-3 text-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40">
+          <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]:rotate-180" aria-hidden />
           Cara di perangkat lain
-        </summary>
-        <div className="mt-1 grid gap-2 @md:grid-cols-2">
+        </Collapsible.Trigger>
+        <Collapsible.Content className="mt-1 grid gap-2 @md:grid-cols-2">
           {others.map((p) => (
             <div key={p} className="rounded-2xl bg-muted/60 p-4 text-sm dark:bg-white/[0.03]">
               <p className="font-bold">{installSteps[p].title}</p>
               <p className="mt-1 text-muted-foreground">{installSteps[p].steps.join(' ')}</p>
             </div>
           ))}
-        </div>
-      </details>
+        </Collapsible.Content>
+      </Collapsible.Root>
     </SettingsSection>
   )
 }
