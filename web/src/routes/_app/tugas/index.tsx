@@ -6,8 +6,6 @@ import {
   AlarmClockIcon,
   ArrowUpRightIcon,
   CheckCheckIcon,
-  CheckIcon,
-  ChevronDownIcon,
   ClockIcon,
   FlameIcon,
   ListTodoIcon,
@@ -15,18 +13,18 @@ import {
   SearchIcon,
   SearchXIcon,
   TriangleAlertIcon,
-  XIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
-import type { Course, Task } from '@/api/client'
+import type { Task } from '@/api/client'
 import { coursesQuery, tasksQuery, useSetTaskStatus } from '@/api/queries'
-import { EmptyState, ErrorState, LoadingList } from '@/components/common'
+import { CoursePicker, EmptyState, ErrorState, LoadingList } from '@/components/common'
+import { HeroBar, heroChipClass, HeroStat, PageHero } from '@/components/page-hero'
 import { useQuickAdd } from '@/components/QuickAddTask'
 import { TaskDetailDialog } from '@/components/TaskDetailDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
+import { Checkbox } from '@/components/ui/misc'
 import { daysBetween, localDate, localTime, parseLocalDate, timeLeft } from '@/lib/dates'
 import { useActiveSemester, useAppSettings, useNow } from '@/lib/hooks'
 import { taskStatusLabel } from '@/lib/labels'
@@ -140,7 +138,7 @@ function TasksPage() {
                 aria-pressed={on}
                 onClick={() => setStatus(f.value)}
                 className={cn(
-                  'flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none md:px-4',
+                  'flex h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none md:px-4',
                   on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -161,7 +159,15 @@ function TasksPage() {
         </div>
 
         <div className="flex min-w-0 flex-1 gap-2.5">
-          {courses.data && courses.data.length > 0 && <CoursePicker courses={courses.data} value={search.course} onChange={setCourse} />}
+          {courses.data && courses.data.length > 0 && (
+            <CoursePicker
+              courses={courses.data}
+              value={search.course}
+              onChange={setCourse}
+              counts={Object.fromEntries(courses.data.map((c) => [c.id, c.open_task_count]))}
+              countLabel="belum selesai"
+            />
+          )}
           <label className="relative min-w-0 flex-1 md:ml-auto md:max-w-xs">
             <span className="sr-only">Cari tugas</span>
             <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -170,7 +176,7 @@ function TasksPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari tugas"
-              className="h-12 w-full rounded-full bg-card pr-4 pl-10 text-base shadow-xs ring-1 ring-black/[0.04] outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30 md:text-sm dark:ring-white/[0.06]"
+              className="h-11 w-full rounded-full bg-card pr-4 pl-10 text-base shadow-xs ring-1 ring-black/[0.04] outline-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/30 md:text-sm dark:ring-white/[0.06]"
             />
           </label>
         </div>
@@ -213,144 +219,36 @@ function TasksPage() {
 
 type Counts = { open: number; done: number; all: number; overdue: number }
 
-/** Page header as a card: semester and title, the open/overdue/done numbers, a completion bar, and the add button. */
+/** Page header: semester and title, the open/overdue/done numbers, a completion bar, and the add button. */
 function TasksHeader({ semester, counts, onAdd }: { semester?: string; counts?: Counts; onAdd: () => void }) {
   const pct = counts && counts.all > 0 ? counts.done / counts.all : 0
   return (
-    <header className="relative mb-5 overflow-hidden rounded-[2rem] bg-hero p-5 text-hero-foreground md:p-6">
-      <div aria-hidden className="dot-grid absolute inset-0 text-white/[0.05]" />
-      <span aria-hidden className="absolute -top-24 -right-16 size-60 rounded-full bg-brand/10 blur-3xl" />
-
-      <div className="relative grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-10">
-        <div className="min-w-0 md:col-start-1 md:row-start-1">
-          {semester && (
-            <Link
-              to="/semester"
-              className="inline-flex h-7 items-center gap-1.5 rounded-full bg-white/10 px-3 text-xs font-semibold transition-colors hover:bg-white/15"
-            >
-              <span aria-hidden className="size-2 rounded-full bg-brand" />
-              {semester}
-            </Link>
-          )}
-          <h1 className="mt-2 flex items-center gap-3 text-[2rem] leading-none font-extrabold tracking-tight md:text-[2.5rem]">
-            <span aria-hidden className="flex size-11 items-center justify-center rounded-2xl bg-brand text-brand-foreground md:size-12">
-              <ListTodoIcon className="size-6" />
-            </span>
-            Tugas
-          </h1>
-        </div>
-
-        <div className="min-w-0 md:col-span-2 md:col-start-1 md:row-start-2 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:ml-auto lg:w-full lg:max-w-3xl">
-          <dl className="grid grid-cols-3 gap-2">
-            <HeaderStat label="Belum selesai" short="Belum" value={counts?.open} accent="text-brand" />
-            <HeaderStat
-              label="Terlambat"
-              value={counts?.overdue}
-              accent={counts && counts.overdue > 0 ? 'text-[#ff8f73]' : undefined}
-              alert={!!counts && counts.overdue > 0}
-            />
-            <HeaderStat label="Selesai" value={counts?.done} />
-          </dl>
-          <div className="mt-3 flex items-center gap-3">
-            <span aria-hidden className="block h-2 flex-1 overflow-hidden rounded-full bg-white/10">
-              <span className="block h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${Math.round(pct * 100)}%` }} />
-            </span>
-            <span className="shrink-0 text-xs font-semibold text-hero-foreground/70 tabular-nums">
-              {counts ? `${counts.done}/${counts.all} selesai · ${Math.round(pct * 100)}%` : 'Memuat'}
-            </span>
-          </div>
-        </div>
-
-        <Button variant="brand" className="hidden md:col-start-2 md:row-start-1 md:inline-flex lg:col-start-3" onClick={onAdd}>
+    <PageHero
+      icon={ListTodoIcon}
+      title="Tugas"
+      eyebrow={
+        semester && (
+          <Link to="/semester" className={cn(heroChipClass, 'transition-colors hover:bg-white/15')}>
+            <span aria-hidden className="size-2 rounded-full bg-brand" />
+            {semester}
+          </Link>
+        )
+      }
+      action={
+        <Button variant="brand" onClick={onAdd}>
           <PlusIcon /> Tambah tugas
         </Button>
-      </div>
-    </header>
-  )
-}
-
-function HeaderStat({ label, short, value, accent, alert }: { label: string; short?: string; value?: number; accent?: string; alert?: boolean }) {
-  return (
-    <div className={cn('rounded-2xl bg-white/[0.06] px-3.5 py-2.5 ring-1 ring-white/[0.06] md:px-4', alert && 'bg-[#ff6b4a]/15 ring-[#ff6b4a]/40')}>
-      <dt className="flex items-center gap-1 text-[0.7rem] font-semibold whitespace-nowrap text-hero-foreground/65 md:text-xs">
-        {alert && <TriangleAlertIcon className="size-3.5 text-[#ff8f73]" aria-hidden />}
-        {short ? (
-          <>
-            <span className="sm:hidden">{short}</span>
-            <span className="hidden sm:inline">{label}</span>
-          </>
-        ) : (
-          label
-        )}
-      </dt>
-      <dd className={cn('mt-0.5 text-2xl leading-tight font-extrabold tracking-tight tabular-nums md:text-[1.75rem]', accent)}>{value ?? '-'}</dd>
-    </div>
-  )
-}
-
-// --------------------------------------------------------------- filters
-
-/** Course filter as one dropdown instead of a wall of chips. */
-function CoursePicker({ courses, value, onChange }: { courses: Course[]; value?: string; onChange: (c: string | undefined) => void }) {
-  const selected = courses.find((c) => c.id === value)
-  return (
-    <div className="flex min-w-0 shrink items-center">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          style={courseStyle(selected?.color)}
-          className={cn(
-            'inline-flex h-12 min-w-0 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-xs ring-1 transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40',
-            selected ? 'tint-bg-strong tint-ink ring-transparent' : 'bg-card ring-black/[0.04] hover:bg-muted dark:ring-white/[0.06]',
-            selected && 'rounded-r-none pr-3',
-          )}
-        >
-          {selected ? <span aria-hidden className="tint-solid size-2.5 shrink-0 rounded-full" /> : null}
-          <span className="max-w-[9rem] truncate sm:max-w-[14rem]">{selected ? selected.name : 'Semua matkul'}</span>
-          <ChevronDownIcon aria-hidden className="size-4 shrink-0 opacity-60" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-h-[min(26rem,70dvh)] w-72 overflow-y-auto">
-          <DropdownMenuItem onSelect={() => onChange(undefined)}>
-            <span aria-hidden className="size-2.5 shrink-0 rounded-full border-2 border-foreground/40" />
-            <span className="flex-1">Semua matkul</span>
-            {!selected && (
-              <>
-                <CheckIcon aria-hidden />
-                <span className="sr-only">(dipilih)</span>
-              </>
-            )}
-          </DropdownMenuItem>
-          {courses.map((c) => (
-            <DropdownMenuItem key={c.id} onSelect={() => onChange(c.id)} style={courseStyle(c.color)}>
-              <span aria-hidden className="tint-solid size-2.5 shrink-0 rounded-full" />
-              <span className="min-w-0 flex-1 truncate">{c.name}</span>
-              {c.open_task_count > 0 && (
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {c.open_task_count}
-                  <span className="sr-only"> belum selesai</span>
-                </span>
-              )}
-              {c.id === value && (
-                <>
-                  <CheckIcon aria-hidden />
-                  <span className="sr-only">(dipilih)</span>
-                </>
-              )}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {selected && (
-        <button
-          type="button"
-          onClick={() => onChange(undefined)}
-          style={courseStyle(selected.color)}
-          aria-label={`Hapus filter ${selected.name}`}
-          className="tint-bg-strong tint-ink inline-flex h-12 w-11 shrink-0 items-center justify-center rounded-r-full border-l border-current/15 pr-1 transition-opacity outline-none hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/40"
-        >
-          <XIcon className="size-4" />
-        </button>
-      )}
-    </div>
+      }
+    >
+      <dl className="grid grid-cols-3 gap-2">
+        <HeroStat label="Belum selesai" short="Belum" value={counts?.open} accent="text-brand" />
+        <HeroStat label="Terlambat" value={counts?.overdue} alert={!!counts && counts.overdue > 0} />
+        <HeroStat label="Selesai" value={counts?.done} />
+      </dl>
+      <HeroBar caption={counts ? `${counts.done}/${counts.all} selesai · ${Math.round(pct * 100)}%` : 'Memuat'}>
+        <span className="block h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${Math.round(pct * 100)}%` }} />
+      </HeroBar>
+    </PageHero>
   )
 }
 

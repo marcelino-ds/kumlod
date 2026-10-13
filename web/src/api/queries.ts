@@ -378,7 +378,10 @@ export const useUploadMaterial = () =>
 export function useUpdateSettings() {
   const qc = useQueryClient()
   return useMutation({
+    mutationKey: ['settings'],
     mutationFn: (body: Schemas['SettingsUpdate']) => unwrap(client.PUT('/api/settings', { body })),
+    // Saves run one after another so a quick second toggle cannot overtake the first.
+    scope: { id: 'settings' },
     onSuccess: (s) => {
       qc.setQueryData(qk.settings, s)
       void invalidateData(qc)

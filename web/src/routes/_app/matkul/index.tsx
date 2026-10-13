@@ -21,6 +21,7 @@ import type * as React from 'react'
 import type { Course, Schemas } from '@/api/client'
 import { coursesQuery, semestersQuery } from '@/api/queries'
 import { AttendanceDots, EmptyState, ErrorState, LevelBadge, LoadingList, PageHeader } from '@/components/common'
+import { heroChipClass, HeroStat, PageHero } from '@/components/page-hero'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
 import { localDate, localTime, parseLocalDate } from '@/lib/dates'
@@ -327,80 +328,65 @@ function CoursesHeader({
 }) {
   const current = semesters.find((s) => s.id === selected)
   return (
-    <header className="relative mb-5 overflow-hidden rounded-[2rem] bg-hero p-5 text-hero-foreground md:p-6">
-      <div aria-hidden className="dot-grid absolute inset-0 text-white/[0.05]" />
-      <span aria-hidden className="absolute -top-24 -right-16 size-60 rounded-full bg-brand/10 blur-3xl" />
-
-      <div className="relative grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-10">
-        <div className="min-w-0 md:col-start-1 md:row-start-1">
-          {semesters.length > 1 ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/10 px-3 text-xs font-semibold outline-none hover:bg-white/15 focus-visible:ring-[3px] focus-visible:ring-white/40">
-                <span aria-hidden className={cn('size-2 rounded-full', current?.is_active ? 'bg-brand' : 'bg-white/40')} />
-                {current?.name ?? 'Pilih semester'}
-                <ChevronDownIcon className="size-3.5 opacity-70" aria-hidden />
-                <span className="sr-only">, ganti semester</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-60">
-                {semesters.map((s) => (
-                  <DropdownMenuItem key={s.id} onSelect={() => onSemester(s.id)}>
-                    <span aria-hidden className={cn('size-2 shrink-0 rounded-full', s.is_active ? 'bg-brand' : 'bg-foreground/25')} />
-                    <span className="flex-1">
-                      {s.name}
-                      {s.is_active && <span className="ml-1.5 text-xs text-muted-foreground">aktif</span>}
-                    </span>
-                    {s.id === selected && <CheckIcon aria-hidden />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            current && (
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/10 px-3 text-xs font-semibold">
-                <span aria-hidden className="size-2 rounded-full bg-brand" />
-                {current.name}
-              </span>
-            )
-          )}
-          <h1 className="mt-2 flex items-center gap-3 text-[2rem] leading-none font-extrabold tracking-tight md:text-[2.5rem]">
-            <span aria-hidden className="flex size-11 items-center justify-center rounded-2xl bg-brand text-brand-foreground md:size-12">
-              <BookOpenIcon className="size-6" />
+    <PageHero
+      icon={BookOpenIcon}
+      title="Matkul"
+      eyebrow={
+        semesters.length > 1 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger className={cn(heroChipClass, 'outline-none hover:bg-white/15 focus-visible:ring-[3px] focus-visible:ring-white/40')}>
+              <span aria-hidden className={cn('size-2 rounded-full', current?.is_active ? 'bg-brand' : 'bg-white/40')} />
+              {current?.name ?? 'Pilih semester'}
+              <ChevronDownIcon className="size-3.5 opacity-70" aria-hidden />
+              <span className="sr-only">, ganti semester</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-60">
+              {semesters.map((s) => (
+                <DropdownMenuItem key={s.id} onSelect={() => onSemester(s.id)}>
+                  <span aria-hidden className={cn('size-2 shrink-0 rounded-full', s.is_active ? 'bg-brand' : 'bg-foreground/25')} />
+                  <span className="flex-1">
+                    {s.name}
+                    {s.is_active && <span className="ml-1.5 text-xs text-muted-foreground">aktif</span>}
+                  </span>
+                  {s.id === selected && <CheckIcon aria-hidden />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          current && (
+            <span className={heroChipClass}>
+              <span aria-hidden className="size-2 rounded-full bg-brand" />
+              {current.name}
             </span>
-            Matkul
-          </h1>
-        </div>
-
-        <dl className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 md:col-span-2 md:col-start-1 md:row-start-2 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:ml-auto lg:w-full lg:max-w-3xl">
-          <HeaderStat label="Matkul" value={stats?.count} accent="text-brand" />
-          <HeaderStat label="Total SKS" value={stats?.credits} />
-          <HeaderStat
-            label="Rata-rata hadir"
-            value={stats ? (stats.avgAttendance === null ? '-' : `${formatNumber(stats.avgAttendance, 0)}%`) : undefined}
-          />
-          <HeaderStat label="Perlu perhatian" value={stats?.attention} alert={!!stats && stats.attention > 0} />
-        </dl>
-
-        <Button variant="brand" asChild className="hidden md:col-start-2 md:row-start-1 md:inline-flex lg:col-start-3">
+          )
+        )
+      }
+      aside={
+        <Button variant="brand" className="px-4" asChild>
+          <Link to="/matkul/baru" search={{ semester: selected }}>
+            <PlusIcon className="size-5" /> Tambah
+          </Link>
+        </Button>
+      }
+      action={
+        <Button variant="brand" asChild>
           <Link to="/matkul/baru" search={{ semester: selected }}>
             <PlusIcon /> Tambah matkul
           </Link>
         </Button>
-      </div>
-    </header>
-  )
-}
-
-function HeaderStat({ label, value, accent, alert }: { label: string; value?: React.ReactNode; accent?: string; alert?: boolean }) {
-  return (
-    <div className={cn('rounded-2xl bg-white/[0.06] px-3.5 py-2.5 ring-1 ring-white/[0.06] md:px-4', alert && 'bg-[#ff6b4a]/15 ring-[#ff6b4a]/40')}>
-      <dt className="flex items-center gap-1 text-[0.7rem] font-semibold whitespace-nowrap text-hero-foreground/65 md:text-xs">
-        {alert && <TriangleAlertIcon className="size-3.5 text-[#ff8f73]" aria-hidden />}
-        {label}
-      </dt>
-      <dd className={cn('mt-0.5 text-2xl leading-tight font-extrabold tracking-tight tabular-nums md:text-[1.75rem]', accent, alert && 'text-[#ff8f73]')}>
-        {value ?? '-'}
-      </dd>
-    </div>
+      }
+    >
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <HeroStat label="Matkul" value={stats?.count} accent="text-brand" />
+        <HeroStat label="Total SKS" value={stats?.credits} />
+        <HeroStat
+          label="Rata-rata hadir"
+          value={stats ? (stats.avgAttendance === null ? '-' : `${formatNumber(stats.avgAttendance, 0)}%`) : undefined}
+        />
+        <HeroStat label="Perlu perhatian" value={stats?.attention} alert={!!stats && stats.attention > 0} />
+      </dl>
+    </PageHero>
   )
 }
 

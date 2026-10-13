@@ -594,9 +594,11 @@ export interface components {
             default_total_meetings: number;
             reminders: components["schemas"]["ReminderSettings"];
             baseline: components["schemas"]["Baseline"];
+            /** @description Isi true saat pengguna menyimpan atau mengonfirmasi skala nilai. Kalau kosong atau false, status `grade_scale_confirmed` tidak berubah. */
+            confirm_grade_scale?: boolean;
         };
         Settings: components["schemas"]["SettingsUpdate"] & {
-            /** @description true setelah pengaturan pernah disimpan */
+            /** @description true setelah skala nilai pernah disimpan atau dikonfirmasi */
             grade_scale_confirmed: boolean;
         };
         /**

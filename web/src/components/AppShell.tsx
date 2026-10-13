@@ -159,9 +159,9 @@ function Sidebar() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const quickAdd = useQuickAdd()
-  // The dashboard, task list, and course list use the full width on large
-  // screens; other pages keep the narrower reading width.
-  const wide = useLocation({ select: (l) => ['/', '/tugas', '/matkul'].includes(l.pathname) })
+  // Top-level pages use the full width on large screens; detail pages and
+  // forms keep the narrower reading width.
+  const wide = useLocation({ select: (l) => ['/', '/tugas', '/matkul', '/materi', '/nilai', '/semester', '/pengaturan'].includes(l.pathname) })
   return (
     <div className="min-h-dvh md:flex md:gap-3 md:p-3">
       <a

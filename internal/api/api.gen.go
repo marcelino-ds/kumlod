@@ -885,15 +885,18 @@ type SemesterUpdate struct {
 
 // Settings defines model for Settings.
 type Settings struct {
-	Baseline                Baseline `json:"baseline"`
-	CountExcusedAsAbsent    bool     `json:"count_excused_as_absent"`
-	DefaultMinAttendancePct int      `json:"default_min_attendance_pct"`
-	DefaultTotalMeetings    int      `json:"default_total_meetings"`
+	Baseline Baseline `json:"baseline"`
+
+	// ConfirmGradeScale Isi true saat pengguna menyimpan atau mengonfirmasi skala nilai. Kalau kosong atau false, status `grade_scale_confirmed` tidak berubah.
+	ConfirmGradeScale       *bool `json:"confirm_grade_scale,omitempty"`
+	CountExcusedAsAbsent    bool  `json:"count_excused_as_absent"`
+	DefaultMinAttendancePct int   `json:"default_min_attendance_pct"`
+	DefaultTotalMeetings    int   `json:"default_total_meetings"`
 
 	// GradeScale Diurutkan server berdasarkan `min_score` menurun
 	GradeScale []GradeScaleEntry `json:"grade_scale"`
 
-	// GradeScaleConfirmed true setelah pengaturan pernah disimpan
+	// GradeScaleConfirmed true setelah skala nilai pernah disimpan atau dikonfirmasi
 	GradeScaleConfirmed bool             `json:"grade_scale_confirmed"`
 	Reminders           ReminderSettings `json:"reminders"`
 
@@ -903,10 +906,13 @@ type Settings struct {
 
 // SettingsUpdate defines model for SettingsUpdate.
 type SettingsUpdate struct {
-	Baseline                Baseline `json:"baseline"`
-	CountExcusedAsAbsent    bool     `json:"count_excused_as_absent"`
-	DefaultMinAttendancePct int      `json:"default_min_attendance_pct"`
-	DefaultTotalMeetings    int      `json:"default_total_meetings"`
+	Baseline Baseline `json:"baseline"`
+
+	// ConfirmGradeScale Isi true saat pengguna menyimpan atau mengonfirmasi skala nilai. Kalau kosong atau false, status `grade_scale_confirmed` tidak berubah.
+	ConfirmGradeScale       *bool `json:"confirm_grade_scale,omitempty"`
+	CountExcusedAsAbsent    bool  `json:"count_excused_as_absent"`
+	DefaultMinAttendancePct int   `json:"default_min_attendance_pct"`
+	DefaultTotalMeetings    int   `json:"default_total_meetings"`
 
 	// GradeScale Diurutkan server berdasarkan `min_score` menurun
 	GradeScale []GradeScaleEntry `json:"grade_scale"`

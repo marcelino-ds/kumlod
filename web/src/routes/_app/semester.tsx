@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { CalendarPlusIcon, CheckIcon, MoreVerticalIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { CalendarPlusIcon, CalendarRangeIcon, CheckIcon, MoreVerticalIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -12,7 +12,8 @@ import {
   useDeleteSemester,
   useUpdateSemester,
 } from '@/api/queries'
-import { EmptyState, ErrorState, Field, FormError, invalidProps, LoadingList, PageHeader } from '@/components/common'
+import { EmptyState, ErrorState, Field, FormError, invalidProps, LoadingList } from '@/components/common'
+import { heroChipClass, HeroStat, PageHero } from '@/components/page-hero'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,8 +27,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input, NativeSelect } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
-import { formatShortDate } from '@/lib/dates'
-import { fieldErrors } from '@/lib/hooks'
+import { formatShortDate, localDate, semesterWeek } from '@/lib/dates'
+import { fieldErrors, useAppSettings, useNow } from '@/lib/hooks'
 import { termLabel } from '@/lib/labels'
 import { uuidv7 } from '@/lib/uuid'
 import { cn } from '@/lib/utils'
@@ -45,17 +46,49 @@ function SemesterPage() {
   const activate = useActivateSemester()
   const remove = useDeleteSemester()
 
+  const list = semesters.data ?? []
+  const current = list.find((s) => s.is_active)
+  const { timeZone } = useAppSettings()
+  const now = useNow()
+  const week = current ? semesterWeek(current.start_date, current.end_date, localDate(now, timeZone)) : undefined
+  const add = () => setEditing({ mode: 'create' })
+
   return (
-    <>
-      <PageHeader
+    <div className="mx-auto max-w-[96rem]">
+      <PageHero
+        icon={CalendarRangeIcon}
         title="Semester"
-        description="Satu semester aktif dipakai di Dashboard, Tugas, Matkul, dan Materi. Semester lain tetap dihitung ke IPK."
-        actions={
-          <Button onClick={() => setEditing({ mode: 'create' })}>
+        eyebrow={
+          current && (
+            <span className={heroChipClass}>
+              <span aria-hidden className="size-2 rounded-full bg-brand" />
+              {current.name} aktif
+            </span>
+          )
+        }
+        aside={
+          <Button variant="brand" className="px-4" onClick={add}>
+            <PlusIcon className="size-5" /> Baru
+          </Button>
+        }
+        action={
+          <Button variant="brand" onClick={add}>
             <PlusIcon /> Semester baru
           </Button>
         }
-      />
+      >
+        <dl className="grid grid-cols-3 gap-2">
+          <HeroStat
+            label="Minggu kuliah"
+            short="Minggu"
+            value={week ? (week.phase === 'during' ? `${week.week}/${week.total}` : week.phase === 'before' ? '0' : `${week.total}/${week.total}`) : undefined}
+            hint={week?.phase === 'before' ? 'belum mulai' : week?.phase === 'after' ? 'semester selesai' : undefined}
+            accent="text-brand"
+          />
+          <HeroStat label="Matkul aktif" short="Matkul" value={current?.course_count} />
+          <HeroStat label="SKS aktif" short="SKS" value={current?.total_credits} />
+        </dl>
+      </PageHero>
       {semesters.data === undefined ? (
         semesters.isError ? <ErrorState error={semesters.error} onRetry={() => void semesters.refetch()} /> : <LoadingList />
       ) : semesters.data.length === 0 ? (
@@ -66,7 +99,7 @@ function SemesterPage() {
           action={<Button onClick={() => setEditing({ mode: 'create' })}>Buat semester</Button>}
         />
       ) : (
-        <ul className="grid gap-4 md:grid-cols-2">
+        <ul className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {semesters.data.map((s) => (
             <li
               key={s.id}
@@ -168,7 +201,7 @@ function SemesterPage() {
           })
         }}
       />
-    </>
+    </div>
   )
 }
 

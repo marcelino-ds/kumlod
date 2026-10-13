@@ -1,4 +1,4 @@
-import { AlertCircleIcon, RefreshCwIcon, SparklesIcon, WifiOffIcon } from 'lucide-react'
+import { AlertCircleIcon, CheckIcon, ChevronDownIcon, RefreshCwIcon, SparklesIcon, WifiOffIcon, XIcon } from 'lucide-react'
 import type * as React from 'react'
 
 import type { AttendanceSummary } from '@/api/client'
@@ -6,7 +6,7 @@ import { errorMessage } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/misc'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Skeleton } from '@/components/ui/misc'
 import { useOnline } from '@/lib/hooks'
 import { levelLabel, levelVariant } from '@/lib/labels'
 import { cn, courseStyle } from '@/lib/utils'
@@ -293,50 +293,90 @@ export function StatTile({
   )
 }
 
-const chipBase =
-  'inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none'
-
-/** A scrollable row of course chips to filter a list by course. */
-export function CourseFilterChips({
+/** Course filter as one dropdown instead of a wall of chips, with an x to clear it. */
+export function CoursePicker({
   courses,
   value,
   onChange,
   counts,
+  countLabel,
+  className,
 }: {
   courses: { id: string; name: string; color: string }[]
-  value: string | undefined
+  value?: string
   onChange: (courseId: string | undefined) => void
+  /** Optional number shown next to each course, e.g. open tasks or materials. */
   counts?: Record<string, number>
+  /** Screen reader suffix for the count, e.g. "belum selesai". */
+  countLabel?: string
+  className?: string
 }) {
-  if (courses.length === 0) return null
+  const selected = courses.find((c) => c.id === value)
+  const h = 'h-11'
   return (
-    <div role="group" aria-label="Filter matkul" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 md:mx-0 md:flex-wrap md:px-0">
-      <button
-        type="button"
-        aria-pressed={!value}
-        onClick={() => onChange(undefined)}
-        className={cn(chipBase, !value ? 'border-transparent bg-primary text-primary-foreground' : 'bg-card hover:bg-muted')}
-      >
-        Semua matkul
-      </button>
-      {courses.map((c) => {
-        const on = value === c.id
-        const count = counts?.[c.id]
-        return (
-          <button
-            key={c.id}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onChange(on ? undefined : c.id)}
-            style={courseStyle(c.color)}
-            className={cn(chipBase, on ? 'tint-bg-strong tint-border tint-ink' : 'bg-card hover:bg-muted')}
-          >
-            <span aria-hidden className="tint-solid size-2.5 rounded-full" />
-            {c.name}
-            {count !== undefined && count > 0 && <span className="text-xs opacity-60 tabular-nums">{count}</span>}
-          </button>
-        )
-      })}
+    <div className={cn('flex min-w-0 shrink items-center', className)}>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          style={courseStyle(selected?.color)}
+          className={cn(
+            h,
+            'inline-flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-xs ring-1 transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40',
+            selected ? 'tint-bg-strong tint-ink ring-transparent' : 'bg-card ring-black/[0.04] hover:bg-muted dark:ring-white/[0.06]',
+            selected && 'rounded-r-none pr-3',
+          )}
+        >
+          {selected ? <span aria-hidden className="tint-solid size-2.5 shrink-0 rounded-full" /> : null}
+          <span className="max-w-[9rem] flex-1 truncate text-left sm:max-w-[14rem]">{selected ? selected.name : 'Semua matkul'}</span>
+          <ChevronDownIcon aria-hidden className="size-4 shrink-0 opacity-60" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-[min(26rem,70dvh)] w-72 overflow-y-auto">
+          <DropdownMenuItem onSelect={() => onChange(undefined)}>
+            <span aria-hidden className="size-2.5 shrink-0 rounded-full border-2 border-foreground/40" />
+            <span className="flex-1">Semua matkul</span>
+            {!selected && (
+              <>
+                <CheckIcon aria-hidden />
+                <span className="sr-only">(dipilih)</span>
+              </>
+            )}
+          </DropdownMenuItem>
+          {courses.map((c) => {
+            const count = counts?.[c.id] ?? 0
+            return (
+              <DropdownMenuItem key={c.id} onSelect={() => onChange(c.id)} style={courseStyle(c.color)}>
+                <span aria-hidden className="tint-solid size-2.5 shrink-0 rounded-full" />
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                {count > 0 && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {count}
+                    {countLabel && <span className="sr-only"> {countLabel}</span>}
+                  </span>
+                )}
+                {c.id === value && (
+                  <>
+                    <CheckIcon aria-hidden />
+                    <span className="sr-only">(dipilih)</span>
+                  </>
+                )}
+              </DropdownMenuItem>
+            )
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {selected && (
+        <button
+          type="button"
+          onClick={() => onChange(undefined)}
+          style={courseStyle(selected.color)}
+          aria-label={`Hapus filter ${selected.name}`}
+          className={cn(
+            h,
+            'tint-bg-strong tint-ink inline-flex w-11 shrink-0 items-center justify-center rounded-r-full border-l border-current/15 pr-1 transition-opacity outline-none hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/40',
+          )}
+        >
+          <XIcon className="size-4" />
+        </button>
+      )}
     </div>
   )
 }

@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { TargetIcon } from 'lucide-react'
+import { GraduationCapIcon, HistoryIcon, TargetIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { gpaQuery } from '@/api/queries'
-import { ErrorState, LoadingList, PageHeader } from '@/components/common'
+import { ErrorState, LoadingList } from '@/components/common'
+import { heroChipClass, HeroStat, PageHero } from '@/components/page-hero'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useDebounced } from '@/lib/hooks'
@@ -33,9 +35,34 @@ function GpaPage() {
   const sim = g.simulation
   const ipkPct = g.ipk === null ? 0 : Math.min(100, (g.ipk / 4) * 100)
 
+  const activeSem = g.semesters.find((s) => s.is_active)
+  const recorded = g.semesters.filter((s) => s.ips !== null).length
+
   return (
-    <>
-      <PageHeader title="Nilai" description="IPS per semester dan IPK kumulatif. Huruf resmi KHS mengalahkan hasil hitung." />
+    <div className="mx-auto max-w-[96rem]">
+      <PageHero
+        icon={GraduationCapIcon}
+        title="Nilai"
+        eyebrow={
+          <span className={heroChipClass}>
+            <span aria-hidden className="size-2 rounded-full bg-brand" />
+            Huruf resmi KHS mengalahkan hasil hitung
+          </span>
+        }
+        action={
+          <Button variant="brand" asChild>
+            <Link to="/pengaturan" hash="baseline">
+              <HistoryIcon /> IPK sebelum Kumlod
+            </Link>
+          </Button>
+        }
+      >
+        <dl className="grid grid-cols-3 gap-2">
+          <HeroStat label={activeSem ? `IPS ${activeSem.name}` : 'IPS semester aktif'} short="IPS aktif" value={formatNumber(activeSem?.ips)} accent="text-brand" />
+          <HeroStat label="SKS dihitung" short="SKS" value={g.total_graded_credits} />
+          <HeroStat label="Semester bernilai" short="Semester" value={`${recorded}/${g.semesters.length}`} />
+        </dl>
+      </PageHero>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
         <section aria-labelledby="ipk-title" className="relative overflow-hidden rounded-[2rem] bg-hero p-6 text-hero-foreground md:p-7">
           <div aria-hidden className="dot-grid absolute inset-0 text-white/[0.06]" />
@@ -187,6 +214,6 @@ function GpaPage() {
           </div>
         </section>
       </div>
-    </>
+    </div>
   )
 }

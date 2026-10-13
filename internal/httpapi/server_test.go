@@ -737,9 +737,23 @@ func TestSettingsEndpoint(t *testing.T) {
 	upd.GradeScale = []api.GradeScaleEntry{{Letter: "E", MinScore: 0}, {Letter: "A", MinScore: 80, Points: 4}}
 	gpa := 3.4
 	upd.Baseline = api.Baseline{Gpa: &gpa, Credits: 40}
+	// A save without confirm_grade_scale (e.g. a reminder switch) leaves the scale unconfirmed.
 	e.call(http.MethodPut, "/api/settings", upd, http.StatusOK, &st)
-	if !st.GradeScaleConfirmed || st.GradeScale[0].Letter != "A" || st.DefaultTotalMeetings != 14 || *st.Baseline.Gpa != 3.4 {
-		t.Errorf("saved: %+v", st)
+	if st.GradeScaleConfirmed || st.GradeScale[0].Letter != "A" || st.DefaultTotalMeetings != 14 || *st.Baseline.Gpa != 3.4 {
+		t.Errorf("saved without confirm: %+v", st)
+	}
+	confirm := true
+	upd.ConfirmGradeScale = &confirm
+	e.call(http.MethodPut, "/api/settings", upd, http.StatusOK, &st)
+	if !st.GradeScaleConfirmed {
+		t.Errorf("confirm: %+v", st)
+	}
+	// Once confirmed, later saves without the flag keep it.
+	upd.ConfirmGradeScale = nil
+	upd.Reminders.TaskEnabled = !upd.Reminders.TaskEnabled
+	e.call(http.MethodPut, "/api/settings", upd, http.StatusOK, &st)
+	if !st.GradeScaleConfirmed || st.Reminders.TaskEnabled != upd.Reminders.TaskEnabled {
+		t.Errorf("keep confirm: %+v", st)
 	}
 	var gs api.GpaSummary
 	e.call(http.MethodGet, "/api/gpa", nil, http.StatusOK, &gs)

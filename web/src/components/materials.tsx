@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  CopyIcon,
   DownloadIcon,
   ExternalLinkIcon,
+  EyeIcon,
   FileIcon,
   FolderOpenIcon,
   LinkIcon,
@@ -10,7 +12,8 @@ import {
   StickyNoteIcon,
   Trash2Icon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import type * as React from 'react'
 import { toast } from 'sonner'
 
 import { fileUrl, type CourseBrief, type Material } from '@/api/client'
@@ -36,64 +39,75 @@ import {
 } from '@/components/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/misc'
-import { formatShortDate } from '@/lib/dates'
-import { fieldErrors } from '@/lib/hooks'
+import { formatShortDate, formatTimestamp } from '@/lib/dates'
+import { fieldErrors, useAppSettings, useNow } from '@/lib/hooks'
 import { materialKindLabel, meetingKindLabel } from '@/lib/labels'
+import { addedAgo, fileExtension, hostOf, type MaterialKind } from '@/lib/materials'
 import { uuidv7 } from '@/lib/uuid'
-import { cn, formatBytes } from '@/lib/utils'
+import { cn, courseStyle, formatBytes } from '@/lib/utils'
 
-const kindIcon = { link: LinkIcon, note: StickyNoteIcon, file: FileIcon }
+export const kindIcon: Record<MaterialKind, React.ComponentType<{ className?: string }>> = {
+  file: FileIcon,
+  link: LinkIcon,
+  note: StickyNoteIcon,
+}
 
-const kindTone = {
+export const kindTone: Record<MaterialKind, string> = {
   file: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
   link: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300',
   note: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300',
 }
 
-function hostOf(url: string): string {
+/** Where a material opens: the link itself or the stored file. Notes have none. */
+function materialHref(m: Material): string | undefined {
+  if (m.kind === 'link') return m.url
+  return m.file ? fileUrl(m.file.id) : undefined
+}
+
+function wordCount(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).length : 0
+}
+
+async function copyText(text: string, what: string) {
   try {
-    return new URL(url).hostname
+    await navigator.clipboard.writeText(text)
+    toast.success(`${what} disalin`)
   } catch {
-    return url
+    toast.error(`${what} gagal disalin`)
   }
 }
 
-/** A searchable list of materials with open, edit, and delete actions. */
-export function MaterialList({
-  filters,
-  showCourse = true,
-  emptyTitle = 'Belum ada materi',
-  emptyAction,
-}: {
-  filters: MaterialFilters
-  showCourse?: boolean
-  emptyTitle?: string
-  emptyAction?: React.ReactNode
-}) {
-  const materials = useQuery(materialsQuery(filters))
+// ------------------------------------------------------------ actions
+
+export type MaterialActions = {
+  view: (m: Material) => void
+  edit: (m: Material) => void
+  remove: (m: Material) => void
+}
+
+/** Detail, edit, and delete dialogs for materials, plus the callbacks that open them. */
+export function useMaterialActions(): { actions: MaterialActions; dialogs: React.ReactNode } {
+  const [viewing, setViewing] = useState<Material | null>(null)
   const [editing, setEditing] = useState<Material | null>(null)
   const [deleting, setDeleting] = useState<Material | null>(null)
   const remove = useDeleteMaterial()
+  const actions = useMemo<MaterialActions>(() => ({ view: setViewing, edit: setEditing, remove: setDeleting }), [])
 
-  if (materials.data === undefined) {
-    return materials.isError ? <ErrorState error={materials.error} onRetry={() => void materials.refetch()} /> : <LoadingList />
-  }
-  if (materials.data.length === 0) {
-    return (
-      <EmptyState
-        icon={<FolderOpenIcon />}
-        title={filters.q ? `Tidak ada materi yang cocok dengan "${filters.q}"` : emptyTitle}
-        action={filters.q ? undefined : emptyAction}
-      />
-    )
-  }
-  return (
+  const dialogs = (
     <>
-      <ul className={cn('space-y-2.5', materials.isPlaceholderData && 'opacity-60')}>
-        {materials.data.map((m) => (
-          <MaterialRow key={m.id} material={m} showCourse={showCourse} onEdit={() => setEditing(m)} onDelete={() => setDeleting(m)} />
-        ))}
-      </ul>
+      <Dialog open={viewing !== null} onOpenChange={(o) => !o && setViewing(null)}>
+        <DialogContent>
+          {viewing && (
+            <MaterialDetail
+              material={viewing}
+              onEdit={() => {
+                setEditing(viewing)
+                setViewing(null)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>{editing && <EditMaterialForm material={editing} onDone={() => setEditing(null)} />}</DialogContent>
       </Dialog>
@@ -115,96 +129,242 @@ export function MaterialList({
       />
     </>
   )
+  return { actions, dialogs }
 }
 
-function MaterialRow({
+// --------------------------------------------------------------- card
+
+/**
+ * A compact material card: kind tile, course and meeting, title, where it
+ * points (file type and size, host, or note length), when it was added, and
+ * a short preview. The whole card opens the material; notes open in a dialog.
+ */
+export function MaterialCard({
   material: m,
-  showCourse,
-  onEdit,
-  onDelete,
+  actions,
+  now,
+  timeZone,
+  showCourse = true,
+  showMeeting = true,
 }: {
   material: Material
-  showCourse: boolean
-  onEdit: () => void
-  onDelete: () => void
+  actions: MaterialActions
+  now: Date
+  timeZone: string
+  showCourse?: boolean
+  showMeeting?: boolean
 }) {
-  const [expanded, setExpanded] = useState(false)
   const Icon = kindIcon[m.kind]
-  const href = m.kind === 'link' ? m.url : m.file ? fileUrl(m.file.id) : undefined
+  const href = materialHref(m)
+  const ext = m.file ? fileExtension(m.file.original_name, m.file.mime_type) : ''
+  const source =
+    m.kind === 'file' && m.file
+      ? [ext, formatBytes(m.file.size_bytes)].filter(Boolean).join(' · ')
+      : m.kind === 'link'
+        ? hostOf(m.url)
+        : `${wordCount(m.description)} kata`
+  const meeting = showMeeting && m.meeting_number !== null
+  const stretch = 'text-left leading-snug font-bold break-words after:absolute after:inset-0 after:rounded-[1.5rem] hover:underline line-clamp-2'
 
   return (
-    <li className="rounded-3xl bg-card p-4 shadow-xs ring-1 ring-black/[0.03] dark:ring-white/[0.06]">
-      <div className="flex items-start gap-3">
-        <span className={cn('flex size-12 shrink-0 items-center justify-center rounded-2xl', kindTone[m.kind])}>
-          <Icon className="size-5" aria-hidden />
-          <span className="sr-only">{materialKindLabel[m.kind]}</span>
-        </span>
-        <div className="min-w-0 flex-1 pt-0.5">
-          {href ? (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="font-bold break-words hover:underline">
-              {m.title}
-            </a>
-          ) : (
-            <button type="button" className="text-left font-bold break-words hover:underline" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
-              {m.title}
-            </button>
-          )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {showCourse && <CourseChip course={m.course} />}
-            {m.meeting_number !== null && (
-              <span className="rounded-full bg-muted px-2.5 py-0.5 font-semibold">Pertemuan {m.meeting_number}</span>
+    <li
+      style={courseStyle(m.course.color)}
+      className="group relative flex gap-3 rounded-[1.5rem] bg-card py-3.5 pr-1.5 pl-3.5 shadow-xs ring-1 ring-black/[0.04] transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/[0.06] dark:ring-white/[0.06]"
+    >
+      <span aria-hidden className={cn('flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl', kindTone[m.kind])}>
+        <Icon className="size-5" />
+        {ext && <span className="text-[0.55rem] leading-none font-extrabold tracking-wide">{ext}</span>}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        {(showCourse || meeting) && (
+          <div className="mb-1 flex min-w-0 flex-wrap items-center gap-1.5">
+            {showCourse && <CourseChip course={m.course} className="max-w-[14rem]" />}
+            {meeting && (
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">Pertemuan {m.meeting_number}</span>
             )}
-            {m.file && (
-              <span className="truncate font-medium">
-                {m.file.original_name} · {formatBytes(m.file.size_bytes)}
-              </span>
-            )}
-            {m.kind === 'link' && <span className="truncate font-medium">{hostOf(m.url)}</span>}
           </div>
-          {m.description && (
-            <p className={cn('mt-2 text-sm whitespace-pre-wrap break-words text-foreground/80', !expanded && 'line-clamp-2')}>{m.description}</p>
-          )}
-          {m.description.length > 140 && (
-            <button type="button" className="mt-1 min-h-11 text-sm font-semibold underline decoration-brand decoration-2 underline-offset-4" onClick={() => setExpanded((v) => !v)}>
-              {expanded ? 'Ringkas' : 'Selengkapnya'}
-            </button>
-          )}
-        </div>
-        <div className="-mr-1 flex shrink-0 items-center">
-          {href && (
-            <Button variant="ghost" size="icon" asChild>
-              <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Buka ${m.title}`}>
-                <ExternalLinkIcon />
-              </a>
+        )}
+        {href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className={stretch}>
+            {m.title}
+          </a>
+        ) : (
+          <button type="button" className={stretch} onClick={() => actions.view(m)}>
+            {m.title}
+          </button>
+        )}
+        <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="sr-only">{materialKindLabel[m.kind]}, </span>
+          <span className="truncate font-semibold">{source}</span>
+          <span aria-hidden>·</span>
+          <span className="shrink-0">
+            <span className="sr-only">ditambahkan </span>
+            {addedAgo(m.created_at, now, timeZone)}
+          </span>
+        </p>
+        {m.description && (
+          <p className="mt-1.5 line-clamp-2 text-sm leading-snug break-words whitespace-pre-line text-foreground/75">{m.description}</p>
+        )}
+      </div>
+
+      <div className="relative z-10 -my-1.5 shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={`Aksi untuk ${m.title}`}>
+              <MoreVerticalIcon />
             </Button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={`Aksi untuk ${m.title}`}>
-                <MoreVerticalIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {m.file && (
-                <DropdownMenuItem asChild>
-                  <a href={fileUrl(m.file.id, true)} download>
-                    <DownloadIcon /> Unduh
-                  </a>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onSelect={onEdit}>
-                <PencilIcon /> Ubah
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {href && (
+              <DropdownMenuItem asChild>
+                <a href={href} target="_blank" rel="noopener noreferrer">
+                  <ExternalLinkIcon /> Buka
+                </a>
               </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-                <Trash2Icon /> Hapus
+            )}
+            <DropdownMenuItem onSelect={() => actions.view(m)}>
+              <EyeIcon /> Lihat detail
+            </DropdownMenuItem>
+            {m.file && (
+              <DropdownMenuItem asChild>
+                <a href={fileUrl(m.file.id, true)} download>
+                  <DownloadIcon /> Unduh
+                </a>
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            )}
+            {m.kind === 'link' && (
+              <DropdownMenuItem onSelect={() => void copyText(m.url, 'Link')}>
+                <CopyIcon /> Salin link
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={() => actions.edit(m)}>
+              <PencilIcon /> Ubah
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onSelect={() => actions.remove(m)}>
+              <Trash2Icon /> Hapus
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </li>
   )
 }
+
+/** Dialog body with the full description or note and the main action for the material. */
+function MaterialDetail({ material: m, onEdit }: { material: Material; onEdit: () => void }) {
+  const { timeZone } = useAppSettings()
+  const href = materialHref(m)
+  const Icon = kindIcon[m.kind]
+  return (
+    <>
+      <DialogHeader>
+        <span aria-hidden className={cn('mb-1 flex size-11 items-center justify-center rounded-2xl', kindTone[m.kind])}>
+          <Icon className="size-5" />
+        </span>
+        <DialogTitle className="break-words">{m.title}</DialogTitle>
+        <DialogDescription asChild>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <CourseChip course={m.course} />
+            {m.meeting_number !== null && (
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">Pertemuan {m.meeting_number}</span>
+            )}
+            <span className="text-xs">
+              {materialKindLabel[m.kind]} · {formatTimestamp(m.created_at, timeZone)}
+            </span>
+          </div>
+        </DialogDescription>
+      </DialogHeader>
+
+      {m.file && (
+        <p className="rounded-2xl bg-muted px-4 py-3 text-sm">
+          <span className="block font-semibold break-all">{m.file.original_name}</span>
+          <span className="text-xs text-muted-foreground">
+            {[fileExtension(m.file.original_name, m.file.mime_type), formatBytes(m.file.size_bytes)].filter(Boolean).join(' · ')}
+          </span>
+        </p>
+      )}
+      {m.kind === 'link' && <p className="rounded-2xl bg-muted px-4 py-3 text-sm font-medium break-all">{m.url}</p>}
+      {m.description ? (
+        <div className="max-h-[50dvh] overflow-y-auto rounded-2xl ring-1 ring-foreground/10">
+          <p className="px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap">{m.description}</p>
+        </div>
+      ) : (
+        m.kind === 'note' && <p className="text-sm text-muted-foreground">Catatan ini masih kosong.</p>
+      )}
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onEdit}>
+          <PencilIcon /> Ubah
+        </Button>
+        {(m.kind === 'link' || (m.kind === 'note' && m.description)) && (
+          <Button variant="outline" onClick={() => void copyText(m.kind === 'link' ? m.url : m.description, m.kind === 'link' ? 'Link' : 'Catatan')}>
+            <CopyIcon /> {m.kind === 'link' ? 'Salin link' : 'Salin catatan'}
+          </Button>
+        )}
+        {m.file && (
+          <Button variant="outline" asChild>
+            <a href={fileUrl(m.file.id, true)} download>
+              <DownloadIcon /> Unduh
+            </a>
+          </Button>
+        )}
+        {href && (
+          <Button asChild>
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              <ExternalLinkIcon /> Buka
+            </a>
+          </Button>
+        )}
+      </DialogFooter>
+    </>
+  )
+}
+
+// --------------------------------------------------------------- list
+
+/** Materials for a fixed filter as a card grid, used on the course page. */
+export function MaterialList({
+  filters,
+  showCourse = true,
+  emptyTitle = 'Belum ada materi',
+  emptyAction,
+}: {
+  filters: MaterialFilters
+  showCourse?: boolean
+  emptyTitle?: string
+  emptyAction?: React.ReactNode
+}) {
+  const materials = useQuery(materialsQuery(filters))
+  const { actions, dialogs } = useMaterialActions()
+  const { timeZone } = useAppSettings()
+  const now = useNow()
+
+  if (materials.data === undefined) {
+    return materials.isError ? <ErrorState error={materials.error} onRetry={() => void materials.refetch()} /> : <LoadingList />
+  }
+  if (materials.data.length === 0) {
+    return (
+      <EmptyState
+        icon={<FolderOpenIcon />}
+        title={filters.q ? `Tidak ada materi yang cocok dengan "${filters.q}"` : emptyTitle}
+        action={filters.q ? undefined : emptyAction}
+      />
+    )
+  }
+  return (
+    <>
+      <ul className={cn('grid gap-2.5 md:grid-cols-2', materials.isPlaceholderData && 'opacity-60')}>
+        {materials.data.map((m) => (
+          <MaterialCard key={m.id} material={m} actions={actions} now={now} timeZone={timeZone} showCourse={showCourse} />
+        ))}
+      </ul>
+      {dialogs}
+    </>
+  )
+}
+
+// -------------------------------------------------------------- forms
 
 function MeetingSelect({
   id,
@@ -226,7 +386,7 @@ function MeetingSelect({
         <option value="">Tidak terkait pertemuan</option>
         {meetings.data?.map((m) => (
           <option key={m.id} value={m.id}>
-            {`Pertemuan ${m.number} · ${formatShortDate(m.date)}${m.kind !== 'lecture' ? ` · ${meetingKindLabel[m.kind]}` : ''}`}
+            {`Pertemuan ${m.number} · ${formatShortDate(m.date)}${m.kind !== 'lecture' ? ` · ${meetingKindLabel[m.kind]}` : ''}${m.topic ? ` · ${m.topic}` : ''}`}
           </option>
         ))}
       </NativeSelect>
@@ -234,24 +394,26 @@ function MeetingSelect({
   )
 }
 
-type Kind = 'link' | 'note' | 'file'
-
 /** Dialog body to add a link, note, or file. */
 export function AddMaterialForm({
   courses,
   fixedCourseId,
+  defaultCourseId,
   defaultMeetingId,
   onDone,
 }: {
   courses: CourseBrief[]
+  /** Hides the course picker and always uses this course. */
   fixedCourseId?: string
+  /** Preselects a course but keeps the picker. */
+  defaultCourseId?: string
   defaultMeetingId?: string
   onDone: () => void
 }) {
   const create = useCreateMaterial()
   const upload = useUploadMaterial()
-  const [kind, setKind] = useState<Kind>('file')
-  const [courseId, setCourseId] = useState(fixedCourseId ?? courses[0]?.id ?? '')
+  const [kind, setKind] = useState<MaterialKind>('file')
+  const [courseId, setCourseId] = useState(fixedCourseId ?? (courses.some((c) => c.id === defaultCourseId) ? defaultCourseId! : (courses[0]?.id ?? '')))
   const [meetingId, setMeetingId] = useState(defaultMeetingId ?? '')
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
@@ -304,7 +466,7 @@ export function AddMaterialForm({
       </DialogHeader>
 
       <div role="group" aria-label="Jenis materi" className="grid grid-cols-3 gap-1 rounded-full bg-muted p-1">
-        {(['file', 'link', 'note'] as Kind[]).map((k) => {
+        {(['file', 'link', 'note'] as MaterialKind[]).map((k) => {
           const KindIcon = kindIcon[k]
           return (
             <button
@@ -318,31 +480,33 @@ export function AddMaterialForm({
               )}
             >
               <KindIcon className="size-4" aria-hidden />
-              {k === 'file' ? 'File' : k === 'link' ? 'Link' : 'Catatan'}
+              {materialKindLabel[k]}
             </button>
           )
         })}
       </div>
 
-      {!fixedCourseId && (
-        <Field id="m-course" label="Matkul" error={errs.course_id}>
-          <NativeSelect
-            id="m-course"
-            value={courseId}
-            onChange={(e) => {
-              setCourseId(e.target.value)
-              setMeetingId('')
-            }}
-          >
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-      )}
-      <MeetingSelect id="m-meeting" courseId={courseId} value={meetingId} onChange={setMeetingId} error={errs.meeting_id} />
+      <div className={cn('grid gap-4', !fixedCourseId && 'sm:grid-cols-2')}>
+        {!fixedCourseId && (
+          <Field id="m-course" label="Matkul" error={errs.course_id}>
+            <NativeSelect
+              id="m-course"
+              value={courseId}
+              onChange={(e) => {
+                setCourseId(e.target.value)
+                setMeetingId('')
+              }}
+            >
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+        )}
+        <MeetingSelect id="m-meeting" courseId={courseId} value={meetingId} onChange={setMeetingId} error={errs.meeting_id} />
+      </div>
 
       {kind === 'file' && (
         <Field id="m-file" label="File" error={errs.file} hint="PDF dan gambar bisa dibuka langsung di browser.">
@@ -355,15 +519,22 @@ export function AddMaterialForm({
           />
         </Field>
       )}
-      <Field id="m-title" label={kind === 'file' ? 'Judul (opsional)' : 'Judul'} error={errs.title} hint={kind === 'file' ? 'Default nama file' : undefined}>
-        <Input id="m-title" maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} {...invalidProps('m-title', errs.title)} />
-      </Field>
       {kind === 'link' && (
         <Field id="m-url" label="Link" error={errs.url}>
           <Input id="m-url" type="url" inputMode="url" placeholder="https://" maxLength={2000} value={url} onChange={(e) => setUrl(e.target.value)} {...invalidProps('m-url', errs.url)} />
         </Field>
       )}
-      <Field id="m-desc" label={kind === 'note' ? 'Isi catatan' : 'Deskripsi'} error={errs.description}>
+      <Field id="m-title" label={kind === 'file' ? 'Judul (opsional)' : 'Judul'} error={errs.title} hint={kind === 'file' ? 'Kosongkan untuk memakai nama file' : undefined}>
+        <Input
+          id="m-title"
+          maxLength={200}
+          placeholder={kind === 'file' && file ? file.name : undefined}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          {...invalidProps('m-title', errs.title)}
+        />
+      </Field>
+      <Field id="m-desc" label={kind === 'note' ? 'Isi catatan' : 'Deskripsi (opsional)'} error={errs.description}>
         <Textarea id="m-desc" rows={kind === 'note' ? 8 : 3} maxLength={20000} value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
 

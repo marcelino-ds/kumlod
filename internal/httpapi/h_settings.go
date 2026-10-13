@@ -18,11 +18,17 @@ func (s *Server) GetSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toSettings(st))
 }
 
-// UpdateSettings validates and stores the settings. Saving marks the grade
-// scale as confirmed.
+// UpdateSettings validates and stores the settings. The grade scale counts as
+// confirmed once a request sets confirm_grade_scale; other saves (a reminder
+// switch, the time zone) keep the current confirmation state.
 func (s *Server) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var in api.SettingsUpdate
 	if err := decodeJSON(r, &in); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	current, _, err := s.settings(r.Context())
+	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
@@ -33,7 +39,7 @@ func (s *Server) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	st := domain.Settings{
 		Timezone:                strings.TrimSpace(in.Timezone),
 		GradeScale:              scale,
-		GradeScaleConfirmed:     true,
+		GradeScaleConfirmed:     current.GradeScaleConfirmed || (in.ConfirmGradeScale != nil && *in.ConfirmGradeScale),
 		CountExcusedAsAbsent:    in.CountExcusedAsAbsent,
 		DefaultMinAttendancePct: in.DefaultMinAttendancePct,
 		DefaultTotalMeetings:    in.DefaultTotalMeetings,

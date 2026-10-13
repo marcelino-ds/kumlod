@@ -1047,6 +1047,11 @@ components:
           $ref: '#/components/schemas/ReminderSettings'
         baseline:
           $ref: '#/components/schemas/Baseline'
+        confirm_grade_scale:
+          type: boolean
+          description: >-
+            Isi true saat pengguna menyimpan atau mengonfirmasi skala nilai.
+            Kalau kosong atau false, status `grade_scale_confirmed` tidak berubah.
 
     Settings:
       allOf:
@@ -1056,7 +1061,7 @@ components:
           properties:
             grade_scale_confirmed:
               type: boolean
-              description: true setelah pengaturan pernah disimpan
+              description: true setelah skala nilai pernah disimpan atau dikonfirmasi
 
     SemesterTerm:
       type: string

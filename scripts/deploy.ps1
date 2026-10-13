@@ -20,6 +20,8 @@
   SSH port (default 22).
 .PARAMETER SkipBuild
   Upload the existing dist/kumlod-linux-amd64.
+.PARAMETER IdentityFile
+  Private key for SSH, e.g. a .pem from the cloud provider. Default: your usual SSH keys.
 
 .EXAMPLE
   ./scripts/deploy.ps1 -Server root@203.0.113.10 -Setup -Domain kumlod.example.com -Email kamu@example.com
@@ -32,7 +34,8 @@ param(
     [string]$Domain = '',
     [string]$Email = '',
     [int]$Port = 22,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [string]$IdentityFile = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,6 +58,11 @@ if (-not (Get-Command ssh -ErrorAction SilentlyContinue) -or -not (Get-Command s
     throw 'ssh/scp tidak ditemukan. Aktifkan OpenSSH Client di Windows (Settings > Apps > Optional features).'
 }
 
+if ($IdentityFile -and -not (Test-Path -LiteralPath $IdentityFile)) { throw "File key tidak ada: $IdentityFile" }
+# Extra options shared by ssh and scp.
+$sshOpts = @()
+if ($IdentityFile) { $sshOpts += @('-i', $IdentityFile, '-o', 'IdentitiesOnly=yes') }
+
 Push-Location $root
 try {
     if (-not $SkipBuild) {
@@ -69,11 +77,11 @@ try {
     )
     if ($Setup) {
         Write-Host '==> Upload deploy/'
-        Invoke-Checked 'ssh' { ssh -p $Port $Server 'rm -rf /tmp/kumlod-deploy && mkdir -p /tmp/kumlod-deploy' }
-        Invoke-Checked 'scp deploy' { scp -P $Port (Get-ChildItem deploy -File | ForEach-Object { $_.FullName }) "${Server}:/tmp/kumlod-deploy/" }
+        Invoke-Checked 'ssh' { ssh @sshOpts -p $Port $Server 'rm -rf /tmp/kumlod-deploy && mkdir -p /tmp/kumlod-deploy' }
+        Invoke-Checked 'scp deploy' { scp @sshOpts -P $Port (Get-ChildItem deploy -File | ForEach-Object { $_.FullName }) "${Server}:/tmp/kumlod-deploy/" }
     }
     Write-Host '==> Upload binary'
-    Invoke-Checked 'scp binary' { scp -P $Port $binary "${Server}:/tmp/kumlod.new" }
+    Invoke-Checked 'scp binary' { scp @sshOpts -P $Port $binary "${Server}:/tmp/kumlod.new" }
 
     $remoteScript += @(
         '$SUDO install -d -m 0755 /opt/kumlod'
@@ -102,12 +110,12 @@ try {
     $tmp = Join-Path ([System.IO.Path]::GetTempPath()) 'kumlod-remote.sh'
     [System.IO.File]::WriteAllText($tmp, (($remoteScript -join "`n") + "`n"))
     try {
-        Invoke-Checked 'scp script' { scp -P $Port $tmp "${Server}:/tmp/kumlod-remote.sh" }
+        Invoke-Checked 'scp script' { scp @sshOpts -P $Port $tmp "${Server}:/tmp/kumlod-remote.sh" }
     } finally {
         Remove-Item $tmp -ErrorAction SilentlyContinue
     }
     Write-Host '==> Pasang dan restart di server'
-    Invoke-Checked 'remote deploy' { ssh -t -p $Port $Server 'bash /tmp/kumlod-remote.sh; status=$?; rm -f /tmp/kumlod-remote.sh; exit $status' }
+    Invoke-Checked 'remote deploy' { ssh @sshOpts -t -p $Port $Server 'bash /tmp/kumlod-remote.sh; status=$?; rm -f /tmp/kumlod-remote.sh; exit $status' }
 } finally {
     Pop-Location
 }
